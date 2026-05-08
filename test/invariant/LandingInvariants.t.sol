@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import {Test} from "forge-std/Test.sol";
+import {StdInvariant} from "forge-std/StdInvariant.sol";
+import {Landing} from "../../src/Landing.sol";
+import {PriceOracle} from "../../oracle/PriceOracle.sol";
+import {MockV3Aggregator} from "@chainlink/contracts/src/v0.8/tests/MockV3Aggregator.sol";
+import {LandingHandler} from "./LandingHandler.t.sol";
+
+contract LandingInvariants is StdInvariant, Test {
+    Landing internal landing;
+    LandingHandler internal handler;
+
+    function setUp() public {
+        MockV3Aggregator feed = new MockV3Aggregator(8, 2000e8);
+        PriceOracle oracle = new PriceOracle(address(feed), address(this));
+        oracle.setStaleTime(500 days);
+
+        landing = new Landing(address(oracle));
+        handler = new LandingHandler(landing);
+
+        targetContract(address(handler));
+    }
+
+    function invariant_TotalLiquidityEqualsProtocolBalance() public view {
+        assertEq(landing.totalLiquidity(), address(landing).balance);
+    }
+}
