@@ -9,7 +9,7 @@ contract RepayTest is LandingTestBase {
         _openPosition(USER, 10 ether, 4 ether);
         _repayAs(USER, 2 ether);
 
-        (uint256 depositedAmount, uint256 borrowedAmount, ) = _userPosition(USER);
+        (uint256 depositedAmount, uint256 borrowedAmount,) = _userPosition(USER);
         assertEq(depositedAmount, 10 ether);
         assertEq(borrowedAmount, 2 ether);
     }
@@ -18,7 +18,7 @@ contract RepayTest is LandingTestBase {
         _openPosition(USER, 10 ether, 4 ether);
         _repayAs(USER, 10 ether);
 
-        (, uint256 borrowedAmount, ) = _userPosition(USER);
+        (, uint256 borrowedAmount,) = _userPosition(USER);
         assertEq(borrowedAmount, 0);
     }
 
@@ -26,7 +26,7 @@ contract RepayTest is LandingTestBase {
         _openPosition(USER, 10 ether, 4 ether);
         _repayAs(USER, 4 ether);
 
-        (, uint256 borrowedAmount, ) = _userPosition(USER);
+        (, uint256 borrowedAmount,) = _userPosition(USER);
         assertEq(borrowedAmount, 0);
     }
 

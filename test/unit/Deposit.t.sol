@@ -9,7 +9,7 @@ contract DepositTest is LandingTestBase {
         uint256 depositAmount = 10 ether;
 
         _depositAs(USER, depositAmount);
-        (uint256 depositedAmount, , ) = _userPosition(USER);
+        (uint256 depositedAmount,,) = _userPosition(USER);
 
         assertEq(depositedAmount, depositAmount);
         assertEq(landing.totalLiquidity(), depositAmount);

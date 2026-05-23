@@ -10,7 +10,7 @@ contract BorrowTest is LandingTestBase {
         uint256 amountBorrow = 5 ether;
 
         _openPosition(USER, amountDeposit, amountBorrow);
-        (uint256 depositedAmount, uint256 borrowedAmount, ) = _userPosition(USER);
+        (uint256 depositedAmount, uint256 borrowedAmount,) = _userPosition(USER);
 
         assertEq(borrowedAmount, amountBorrow);
         assertEq(depositedAmount, amountDeposit);

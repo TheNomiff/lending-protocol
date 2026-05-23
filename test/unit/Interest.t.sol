@@ -10,7 +10,7 @@ contract InterestTest is LandingTestBase {
         skip(1 days);
 
         uint256 totalDebt = landing.getTotalDebt(USER);
-        (, uint256 totalBorrow, ) = _userPosition(USER);
+        (, uint256 totalBorrow,) = _userPosition(USER);
         assertGt(totalDebt, totalBorrow);
     }
 
@@ -47,7 +47,7 @@ contract InterestTest is LandingTestBase {
         uint256 amountRepay = landing.getTotalDebt(USER);
         _repayAs(USER, amountRepay);
 
-        (, uint256 totalBorrow, ) = _userPosition(USER);
+        (, uint256 totalBorrow,) = _userPosition(USER);
         assertEq(totalBorrow, 0);
         assertEq(landing.getTotalDebt(USER), 0);
     }

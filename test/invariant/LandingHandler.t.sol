@@ -8,6 +8,7 @@ contract LandingHandler is Test {
     Landing internal immutable landing;
 
     address[] internal actors;
+
     constructor(Landing _landing) {
         landing = _landing;
         actors.push(address(11));
@@ -22,15 +23,7 @@ contract LandingHandler is Test {
         address actor = _actor(actorIndex);
         uint256 boundedAmount = bound(amount, 1 wei, 20 ether);
         // #region agent log
-        _writeDebugLog(
-            "pre-fix",
-            "H2",
-            "LandingHandler.t.sol:deposit",
-            "deposit bounded",
-            actor,
-            amount,
-            boundedAmount
-        );
+        _writeDebugLog("pre-fix", "H2", "LandingHandler.t.sol:deposit", "deposit bounded", actor, amount, boundedAmount);
         // #endregion
         vm.deal(actor, boundedAmount);
 
@@ -42,15 +35,7 @@ contract LandingHandler is Test {
         address actor = _actor(actorIndex);
         uint256 boundedAmount = bound(amount, 1 wei, 10 ether);
         // #region agent log
-        _writeDebugLog(
-            "pre-fix",
-            "H3",
-            "LandingHandler.t.sol:borrow",
-            "borrow bounded",
-            actor,
-            amount,
-            boundedAmount
-        );
+        _writeDebugLog("pre-fix", "H3", "LandingHandler.t.sol:borrow", "borrow bounded", actor, amount, boundedAmount);
         // #endregion
         vm.prank(actor);
         try landing.borrow(boundedAmount) {} catch {}
@@ -61,13 +46,7 @@ contract LandingHandler is Test {
         uint256 boundedAmount = bound(amount, 1 wei, 10 ether);
         // #region agent log
         _writeDebugLog(
-            "pre-fix",
-            "H4",
-            "LandingHandler.t.sol:withdraw",
-            "withdraw bounded",
-            actor,
-            amount,
-            boundedAmount
+            "pre-fix", "H4", "LandingHandler.t.sol:withdraw", "withdraw bounded", actor, amount, boundedAmount
         );
         // #endregion
         vm.prank(actor);
@@ -78,15 +57,7 @@ contract LandingHandler is Test {
         address actor = _actor(actorIndex);
         uint256 boundedAmount = bound(amount, 1 wei, 10 ether);
         // #region agent log
-        _writeDebugLog(
-            "pre-fix",
-            "H5",
-            "LandingHandler.t.sol:repay",
-            "repay bounded",
-            actor,
-            amount,
-            boundedAmount
-        );
+        _writeDebugLog("pre-fix", "H5", "LandingHandler.t.sol:repay", "repay bounded", actor, amount, boundedAmount);
         // #endregion
         vm.deal(actor, boundedAmount);
         vm.prank(actor);
@@ -131,5 +102,4 @@ contract LandingHandler is Test {
             )
         );
     }
-
 }

@@ -53,18 +53,16 @@ abstract contract LandingTestBase is Test {
         landing.repay{value: amount}();
     }
 
-    function _openPosition(
-        address user,
-        uint256 depositAmount,
-        uint256 borrowAmount
-    ) internal {
+    function _openPosition(address user, uint256 depositAmount, uint256 borrowAmount) internal {
         _depositAs(user, depositAmount);
         _borrowAs(user, borrowAmount);
     }
 
-    function _userPosition(
-        address user
-    ) internal view returns (uint256 deposited, uint256 borrowed, uint256 lastBorrowTimestamp) {
+    function _userPosition(address user)
+        internal
+        view
+        returns (uint256 deposited, uint256 borrowed, uint256 lastBorrowTimestamp)
+    {
         return landing.users(user);
     }
 }
