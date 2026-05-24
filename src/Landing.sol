@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {PriceOracle} from "../oracle/PriceOracle.sol";
+import {RiskEngine} from "./engines/RiskEngine.sol";
 
 contract Landing is ReentrancyGuard {
     ////////////////////
@@ -28,6 +29,7 @@ contract Landing is ReentrancyGuard {
     error Landing__WithdrawnFailed();
     error Landing__RefundFailed();
     error Landing__InvalidOracle();
+    error Landing__InvalidRiskEngine();
     error Landing__BreakHealthFactor();
     error Landing__HealthFactorOk();
     error Landing__LiquidationBonusFailed();
@@ -55,11 +57,7 @@ contract Landing is ReentrancyGuard {
     uint256 public constant INTEREST_RATE = 5e16;
     uint256 public constant INTEREST_RATE_PER_SECOND = INTEREST_RATE / 365 days;
     uint256 public constant PRECISION = 1e18;
-    uint256 public constant MAX_BORROW_RATIO = 50;
-    uint256 public constant LIQUIDATION_THRESHOLD = 75;
     uint256 public constant LIQUIDATION_PRECISION = 100;
-    uint256 public constant MIN_HEALTH_FACTOR = 1e18;
-    uint256 public constant CLOSE_FACTOR = 50;
     uint256 public constant LIQUIDATION_BONUS = 10;
 
     ////////////////////////////////
@@ -68,6 +66,7 @@ contract Landing is ReentrancyGuard {
 
     address public immutable owner;
     PriceOracle public oracle;
+    RiskEngine public riskEngine;
 
     //////////////////////
     ///// MAPPINGS /////
@@ -88,10 +87,12 @@ contract Landing is ReentrancyGuard {
     ///// CONSTRUCTOR /////
     ////////////////////////
 
-    constructor(address _oracle) {
+    constructor(address _oracle, address riskEngineAddress) {
         if (_oracle == address(0)) revert Landing__InvalidOracle();
-
         oracle = PriceOracle(_oracle);
+
+        if (riskEngineAddress == address(0)) revert Landing__InvalidRiskEngine();
+        riskEngine = RiskEngine(riskEngineAddress);
 
         owner = msg.sender;
     }
@@ -117,16 +118,13 @@ contract Landing is ReentrancyGuard {
         _accrueInterest(user);
 
         uint256 collateralUsd = oracle.getETHValueInUSD(user.deposited); // $1000
-
-        uint256 maxBorrowUsd = (collateralUsd * MAX_BORROW_RATIO) / LIQUIDATION_PRECISION; // $500
-
         uint256 borrowUsd = oracle.getETHValueInUSD(amount); // $200
-
         uint256 currentDebt = oracle.getETHValueInUSD(user.borrowed); // $0 default, but if the user already has a borrow, it will include the interest as well. for example, if the user has a borrow of $100 and the interest is $10, the currentDebt will be $110.
-
         uint256 totalDebt = currentDebt + borrowUsd; // $0 + $200 = $200, but if the user already has a borrow, it will be $110 + $200 = $300, and if the user has a borrow of $400, it will be $400 + $200 = $600, which exceeds the max borrow of $500 and reverts.
 
-        if (totalDebt > maxBorrowUsd) revert Landing__BorrowExceedsCollateral();
+        if (!riskEngine.canBorrow(collateralUsd, totalDebt)) {
+            revert Landing__BorrowExceedsCollateral();
+        }
 
         if (amount > totalLiquidity) revert Landing__NotEnoughLiquidity(); // $200 > totalLiquidity reverts, because the protocol doesn't have enough funds to Lend.
 
@@ -157,9 +155,7 @@ contract Landing is ReentrancyGuard {
 
         uint256 debtUsd = oracle.getETHValueInUSD(user.borrowed); // Get the USD value of the user's debt, including the interest.
 
-        uint256 maxBorrowUsd = (remainingCollateralUsd * MAX_BORROW_RATIO) / LIQUIDATION_PRECISION; // This is the maximum amount that the user can borrow based on the remaining collateral, which is 50% of the remaining collateral's USD value.
-
-        if (debtUsd > maxBorrowUsd) {
+        if (!riskEngine.canBorrow(remainingCollateralUsd, debtUsd)) {
             revert Landing__BorrowExceedsCollateral();
         }
 
@@ -288,25 +284,19 @@ contract Landing is ReentrancyGuard {
         uint256 debt = user.borrowed + _calculateInterest(user);
         uint256 debtUsd = oracle.getETHValueInUSD(debt);
 
-        if (debtUsd == 0) {
-            return type(uint256).max;
-        }
-
-        uint256 collateralAdjusted = (collateralUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
-
-        return (collateralAdjusted * PRECISION) / debtUsd;
+        return riskEngine.healthFactor(collateralUsd, debtUsd);
     }
 
     function _revertIfHealthy(User storage user) internal view {
         uint256 HF = _healthFactor(user);
 
-        if (HF >= MIN_HEALTH_FACTOR) {
+        if (!riskEngine.isLiquidatable(HF)) {
             revert Landing__HealthFactorOk();
         }
     }
 
-    function _calculateMaxLiquidation(uint256 debt) internal pure returns (uint256) {
-        return (debt * CLOSE_FACTOR) / LIQUIDATION_PRECISION;
+    function _calculateMaxLiquidation(uint256 debt) internal view returns (uint256) {
+        return riskEngine.calculateMaxLiquidation(debt);
     }
 
     ////////////////////////////////

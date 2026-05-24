@@ -7,17 +7,19 @@ import {Landing} from "../../src/Landing.sol";
 import {PriceOracle} from "../../oracle/PriceOracle.sol";
 import {MockV3Aggregator} from "@chainlink/contracts/src/v0.8/tests/MockV3Aggregator.sol";
 import {LandingHandler} from "./LandingHandler.t.sol";
+import {RiskEngine} from "../../src/engines/RiskEngine.sol";
 
 contract LandingInvariants is StdInvariant, Test {
     Landing internal landing;
     LandingHandler internal handler;
+    RiskEngine internal riskEngine;
 
     function setUp() public {
         MockV3Aggregator feed = new MockV3Aggregator(8, 2000e8);
         PriceOracle oracle = new PriceOracle(address(feed), address(this));
         oracle.setStaleTime(500 days);
-
-        landing = new Landing(address(oracle));
+        riskEngine = new RiskEngine();
+        landing = new Landing(address(oracle), address(riskEngine));
         handler = new LandingHandler(landing);
 
         targetContract(address(handler));

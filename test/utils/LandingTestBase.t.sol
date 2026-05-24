@@ -5,11 +5,13 @@ import {Test} from "forge-std/Test.sol";
 import {Landing} from "../../src/Landing.sol";
 import {PriceOracle} from "../../oracle/PriceOracle.sol";
 import {MockV3Aggregator} from "@chainlink/contracts/src/v0.8/tests/MockV3Aggregator.sol";
+import {RiskEngine} from "../../src/engines/RiskEngine.sol";
 
 abstract contract LandingTestBase is Test {
     Landing internal landing;
     PriceOracle internal oracle;
     MockV3Aggregator internal mockFeed;
+    RiskEngine internal riskEngine;
 
     address internal constant USER = address(1);
     address internal constant USER_A = address(2);
@@ -22,7 +24,8 @@ abstract contract LandingTestBase is Test {
         mockFeed = new MockV3Aggregator(FEED_DECIMALS, ETH_PRICE);
         oracle = new PriceOracle(address(mockFeed), address(this));
         oracle.setStaleTime(500 days);
-        landing = new Landing(address(oracle));
+        riskEngine = new RiskEngine();
+        landing = new Landing(address(oracle), address(riskEngine));
 
         _fundUser(USER, 100 ether);
         _fundUser(USER_A, 100 ether);
