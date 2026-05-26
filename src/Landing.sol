@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {PriceOracle} from "../oracle/PriceOracle.sol";
+import {PriceOracle} from "./oracle/PriceOracle.sol";
 import {RiskEngine} from "./engines/RiskEngine.sol";
 
 contract Landing is ReentrancyGuard {
@@ -119,7 +119,7 @@ contract Landing is ReentrancyGuard {
 
         uint256 collateralUsd = oracle.getETHValueInUSD(user.deposited); // $1000
         uint256 borrowUsd = oracle.getETHValueInUSD(amount); // $200
-        uint256 currentDebt = oracle.getETHValueInUSD(user.borrowed); // $0 default, but if the user already has a borrow, it will include the interest as well. for example, if the user has a borrow of $100 and the interest is $10, the currentDebt will be $110.
+        uint256 currentDebt = oracle.getETHValueInUSD(getTotalDebt(msg.sender)); // $0 default, but if the user already has a borrow, it will include the interest as well. for example, if the user has a borrow of $100 and the interest is $10, the currentDebt will be $110.
         uint256 totalDebt = currentDebt + borrowUsd; // $0 + $200 = $200, but if the user already has a borrow, it will be $110 + $200 = $300, and if the user has a borrow of $400, it will be $400 + $200 = $600, which exceeds the max borrow of $500 and reverts.
 
         if (!riskEngine.canBorrow(collateralUsd, totalDebt)) {
@@ -153,9 +153,9 @@ contract Landing is ReentrancyGuard {
 
         uint256 remainingCollateralUsd = oracle.getETHValueInUSD(remainingCollateral); // Get the USD value of the remaining collateral.
 
-        uint256 debtUsd = oracle.getETHValueInUSD(user.borrowed); // Get the USD value of the user's debt, including the interest.
+        uint256 debtUsd = oracle.getETHValueInUSD(getTotalDebt(msg.sender)); // Get the USD value of the user's debt, including the interest.
 
-        if (!riskEngine.canBorrow(remainingCollateralUsd, debtUsd)) {
+        if (!riskEngine.canWithdraw(remainingCollateralUsd, debtUsd)) {
             revert Landing__BorrowExceedsCollateral();
         }
 
@@ -208,7 +208,7 @@ contract Landing is ReentrancyGuard {
         _accrueInterest(user); // Accrue interest on the user's borrow before allowing them to be liquidated.
         _revertIfHealthy(user); // Revert if the user's health factor is above the minimum threshold, which mean they are not eligible for liquidation.
 
-        uint256 currentDebt = user.borrowed; // Total debt of the user, including the interest, that need to be repaid by the liquidator to reduce the user's debt and improve their health factor.
+        uint256 currentDebt = getTotalDebt(userAddress); // Total debt of the user, including the interest, that need to be repaid by the liquidator to reduce the user's debt and improve their health factor.
         uint256 maxLiquidation = _calculateMaxLiquidation(currentDebt); // Calculate the maximum amount that can be liquidated based on the user's total debt, which is 50% of the user's total debt.
         uint256 repayAmount = msg.value;
 
@@ -233,7 +233,7 @@ contract Landing is ReentrancyGuard {
             user.lastBorrowTimestamp = 0;
         }
 
-        uint256 collateralToSeize = repayAmount + ((repayAmount * LIQUIDATION_BONUS) / LIQUIDATION_PRECISION); // Calculate the amount of collateral to seize from the user based on the repay amount and the liquidation bonus, which is 10% of the repay amount.
+        uint256 collateralToSeize = riskEngine.calculateSeizedCollateral(repayAmount); // Calculate the amount of collateral to seize from the user based on the repay amount and the liquidation bonus, which is 10% of the repay amount.
 
         if (collateralToSeize > user.deposited) {
             collateralToSeize = user.deposited;

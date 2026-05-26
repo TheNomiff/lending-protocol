@@ -3,15 +3,17 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {Landing} from "../../src/Landing.sol";
-import {PriceOracle} from "../../oracle/PriceOracle.sol";
+import {PriceOracle} from "../../src/oracle/PriceOracle.sol";
 import {MockV3Aggregator} from "@chainlink/contracts/src/v0.8/tests/MockV3Aggregator.sol";
 import {RiskEngine} from "../../src/engines/RiskEngine.sol";
+import {Timelock} from "../../src/governance/Timelock.sol";
 
 abstract contract LandingTestBase is Test {
     Landing internal landing;
     PriceOracle internal oracle;
     MockV3Aggregator internal mockFeed;
     RiskEngine internal riskEngine;
+    Timelock internal timelock;
 
     address internal constant USER = address(1);
     address internal constant USER_A = address(2);
@@ -22,9 +24,13 @@ abstract contract LandingTestBase is Test {
 
     function setUp() public virtual {
         mockFeed = new MockV3Aggregator(FEED_DECIMALS, ETH_PRICE);
-        oracle = new PriceOracle(address(mockFeed), address(this));
+        oracle = new PriceOracle(address(mockFeed));
         oracle.setStaleTime(500 days);
         riskEngine = new RiskEngine();
+        timelock = new Timelock();
+        oracle.transferOwnership(address(timelock));
+        riskEngine.transferOwnership(address(timelock));
+
         landing = new Landing(address(oracle), address(riskEngine));
 
         _fundUser(USER, 100 ether);
