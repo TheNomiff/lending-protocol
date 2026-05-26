@@ -6,52 +6,187 @@ contract RiskEngine {
     //// ERRORS ////
     /////////////////
 
+    error RiskEngine__NotOwner();
+    error RiskEngine__InvalidOwner();
+    error RiskEngine__InvalidRatio();
+    error RiskEngine__InvalidThreshold();
+    error RiskEngine__InvalidCloseFactor();
+    error RiskEngine__InvalidHealthFactor();
+    error RiskEngine__InvalidBonus();
+    error RiskEngine__InvalidRiskParameters();
+
+    //////////////////
+    //// EVENTS ////
+    /////////////////
+
+    event MaxBorrowUpdated(uint256 oldValue, uint256 newValue);
+
+    event ThresholdUpdated(uint256 oldValue, uint256 newValue);
+
+    event CloseFactorUpdated(uint256 oldValue, uint256 newValue);
+
+    event HealthFactorUpdated(uint256 oldValue, uint256 newValue);
+
+    event LiquidationBonusUpdated(uint256 oldValue, uint256 newValue);
+
+    /////////////////////
+    //// MODIFIERS ////
+    /////////////////////
+
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert RiskEngine__NotOwner();
+        _;
+    }
+
     /////////////////////
     //// CONSTANTS ////
     ////////////////////
 
-    uint256 public constant MAX_BORROW_RATIO = 50;
-    uint256 public constant LIQUIDATION_THRESHOLD = 75;
     uint256 public constant LIQUIDATION_PRECISION = 100;
     uint256 public constant PRECISION = 1e18;
-    uint256 public constant MIN_HEALTH_FACTOR = 1e18;
-    uint256 public constant CLOSE_FACTOR = 50;
+
+    //////////////////////////
+    //// STATE VARIABLE ////
+    /////////////////////////
+
+    uint256 public maxBorrowRatio = 50;
+    uint256 public closeFactor = 50;
+    uint256 public liquidationBonus = 10;
+    uint256 public minHealthFactor = 1e18;
+    uint256 public liquidationThreshold = 75;
+
+    address public owner;
+
+    ///////////////////////
+    //// CONSTRUCTOR ////
+    ///////////////////////
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    // V1 assumes debt asset and collateral asset are same asset (ETH)
+    // Multi-asset version must convert through oracle prices
 
     /////////////////////////////
     //// EXTERNAL FUNCTION ////
     ////////////////////////////
 
-    function healthFactor(uint256 collateralUsd, uint256 debtUsd) public pure returns (uint256) {
+    function healthFactor(uint256 collateralUsd, uint256 debtUsd) external view returns (uint256) {
         if (debtUsd == 0) {
             return type(uint256).max;
         }
 
-        uint256 collateralAdjusted = (collateralUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+        uint256 collateralAdjusted = (collateralUsd * liquidationThreshold) / LIQUIDATION_PRECISION;
 
         return (collateralAdjusted * PRECISION) / debtUsd;
     }
 
-    function maxBorrow(uint256 collateralUsd) public pure returns (uint256) {
-        return (collateralUsd * MAX_BORROW_RATIO) / LIQUIDATION_PRECISION;
+    function canBorrow(uint256 collateralUsd, uint256 totalDebtUsd) external view returns (bool) {
+        return _isDebtSafe(collateralUsd, totalDebtUsd);
     }
 
-    function canBorrow(uint256 collateralUsd, uint256 totalDebtUsd) public pure returns (bool) {
-        return totalDebtUsd <= maxBorrow(collateralUsd);
+    function maxBorrow(uint256 collateralUsd) external view returns (uint256) {
+        return _maxBorrow(collateralUsd);
     }
 
-    function isLiquidatable(uint256 HF) public pure returns (bool) {
-        return HF < MIN_HEALTH_FACTOR;
+    function isLiquidatable(uint256 HF) external view returns (bool) {
+        return HF < minHealthFactor;
     }
 
-    function calculateMaxLiquidation(uint256 debt) public pure returns (uint256) {
-        return (debt * CLOSE_FACTOR) / LIQUIDATION_PRECISION;
+    function calculateMaxLiquidation(uint256 debt) external view returns (uint256) {
+        return (debt * closeFactor) / LIQUIDATION_PRECISION;
+    }
+
+    function calculateSeizedCollateral(uint256 repayAmount) external view returns (uint256) {
+        return repayAmount + ((repayAmount * liquidationBonus) / LIQUIDATION_PRECISION);
+    }
+
+    function canWithdraw(uint256 remainingCollateralUsd, uint256 debtUsd) external view returns (bool) {
+        return _isDebtSafe(remainingCollateralUsd, debtUsd);
     }
 
     /////////////////////////////
     //// INTERNAL FUNCTION ////
     ////////////////////////////
 
+    function _isDebtSafe(uint256 collateralUsd, uint256 debtUsd) internal view returns (bool) {
+        return debtUsd <= _maxBorrow(collateralUsd);
+    }
+
+    function _maxBorrow(uint256 collateralUsd) internal view returns (uint256) {
+        return (collateralUsd * maxBorrowRatio) / LIQUIDATION_PRECISION;
+    }
+
     ///////////////////////////
-    //// GETTER FUNCTION ////
-    //////////////////////////
+    //// OWNER FUNCTIONS ////
+    ///////////////////////////
+
+    function updateMaxBorrowRatio(uint256 newRatio) external onlyOwner {
+        if (newRatio == 0 || newRatio > 100) revert RiskEngine__InvalidRatio();
+        if (newRatio >= liquidationThreshold) {
+            revert RiskEngine__InvalidRiskParameters();
+        }
+
+        uint256 oldRatio = maxBorrowRatio;
+        maxBorrowRatio = newRatio;
+
+        emit MaxBorrowUpdated(oldRatio, newRatio);
+    }
+
+    function updateLiquidationThreshold(uint256 newThreshold) external onlyOwner {
+        if (newThreshold == 0 || newThreshold > 100) {
+            revert RiskEngine__InvalidThreshold();
+        }
+        if (newThreshold <= maxBorrowRatio) {
+            revert RiskEngine__InvalidRiskParameters();
+        }
+
+        uint256 oldThreshold = liquidationThreshold;
+        liquidationThreshold = newThreshold;
+
+        emit ThresholdUpdated(oldThreshold, newThreshold);
+    }
+
+    function updateCloseFactor(uint256 newFactor) external onlyOwner {
+        if (newFactor == 0 || newFactor > 100) {
+            revert RiskEngine__InvalidCloseFactor();
+        }
+
+        uint256 oldFactor = closeFactor;
+        closeFactor = newFactor;
+
+        emit CloseFactorUpdated(oldFactor, newFactor);
+    }
+
+    function updateMinimumHealthFactor(uint256 newHF) external onlyOwner {
+        if (newHF == 0 || newHF < 1e18) {
+            revert RiskEngine__InvalidHealthFactor();
+        }
+
+        uint256 oldHF = minHealthFactor;
+        minHealthFactor = newHF;
+
+        emit HealthFactorUpdated(oldHF, newHF);
+    }
+
+    function updateLiquidationBonus(uint256 newBonus) external onlyOwner {
+        if (newBonus == 0 || newBonus > 100) revert RiskEngine__InvalidBonus();
+        uint256 oldBonus = liquidationBonus;
+        liquidationBonus = newBonus;
+
+        emit LiquidationBonusUpdated(oldBonus, newBonus);
+    }
+
+    /////////////////////
+    //// OWNERSHIP ////
+    ////////////////////
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        if (newOwner == address(0)) {
+            revert RiskEngine__InvalidOwner();
+        }
+
+        owner = newOwner;
+    }
 }
