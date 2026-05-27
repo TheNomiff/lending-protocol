@@ -8,26 +8,35 @@ contract RiskEngine {
 
     error RiskEngine__NotOwner();
     error RiskEngine__InvalidOwner();
+    error RiskEngine__InvalidGuardian();
     error RiskEngine__InvalidRatio();
     error RiskEngine__InvalidThreshold();
     error RiskEngine__InvalidCloseFactor();
     error RiskEngine__InvalidHealthFactor();
     error RiskEngine__InvalidBonus();
     error RiskEngine__InvalidRiskParameters();
+    error RiskEngine__BorrowPaused();
+    error RiskEngine__LiquidationPaused();
+    error RiskEngine__DepositPaused();
+    error RiskEngine__InvalidCaps();
 
     //////////////////
     //// EVENTS ////
     /////////////////
 
     event MaxBorrowUpdated(uint256 oldValue, uint256 newValue);
-
     event ThresholdUpdated(uint256 oldValue, uint256 newValue);
-
     event CloseFactorUpdated(uint256 oldValue, uint256 newValue);
-
     event HealthFactorUpdated(uint256 oldValue, uint256 newValue);
-
     event LiquidationBonusUpdated(uint256 oldValue, uint256 newValue);
+    event BorrowPaused();
+    event LiquidationPaused();
+    event DepositPaused();
+    event BorrowUnpaused();
+    event LiquidationUnpaused();
+    event DepositUnpaused();
+    event SupplyCapUpdated(uint256 oldCap, uint256 newCap);
+    event BorrowCapUpdated(uint256 oldCap, uint256 newCap);
 
     /////////////////////
     //// MODIFIERS ////
@@ -37,6 +46,18 @@ contract RiskEngine {
         if (msg.sender != owner) revert RiskEngine__NotOwner();
         _;
     }
+
+    modifier onlyGuardian() {
+        if (msg.sender != guardian) revert RiskEngine__InvalidGuardian();
+        _;
+    }
+
+    ////////////////////////////
+    //// OWNER & GUARDIAN ////
+    ///////////////////////////
+
+    address public owner;
+    address public guardian;
 
     /////////////////////
     //// CONSTANTS ////
@@ -54,15 +75,33 @@ contract RiskEngine {
     uint256 public liquidationBonus = 10;
     uint256 public minHealthFactor = 1e18;
     uint256 public liquidationThreshold = 75;
+    uint256 public supplyCap;
+    uint256 public borrowCap;
 
-    address public owner;
+    ///////////////////////////
+    //// EMERGENCY PAUSE ////
+    ///////////////////////////
+
+    bool public borrowPaused;
+    bool public liquidationPaused;
+    bool public depositPaused;
 
     ///////////////////////
     //// CONSTRUCTOR ////
     ///////////////////////
 
-    constructor() {
+    constructor(uint256 _supplyCap, uint256 _borrowCap) {
         owner = msg.sender;
+        guardian = msg.sender;
+
+        if (_supplyCap == 0) revert RiskEngine__InvalidCaps();
+
+        if (_borrowCap == 0) revert RiskEngine__InvalidCaps();
+
+        if (_borrowCap > _supplyCap) revert RiskEngine__InvalidCaps();
+
+        supplyCap = _supplyCap;
+        borrowCap = _borrowCap;
     }
 
     // V1 assumes debt asset and collateral asset are same asset (ETH)
@@ -106,6 +145,14 @@ contract RiskEngine {
         return _isDebtSafe(remainingCollateralUsd, debtUsd);
     }
 
+    function canSupply(uint256 currentSupply, uint256 amount) external view returns (bool) {
+        return currentSupply + amount <= supplyCap;
+    }
+
+    function canGlobalBorrow(uint256 currentBorrow, uint256 amount) external view returns (bool) {
+        return currentBorrow + amount <= borrowCap;
+    }
+
     /////////////////////////////
     //// INTERNAL FUNCTION ////
     ////////////////////////////
@@ -118,9 +165,49 @@ contract RiskEngine {
         return (collateralUsd * maxBorrowRatio) / LIQUIDATION_PRECISION;
     }
 
+    /////////////////////////////////////
+    //// EMERGENCY PAUSE FUNCTIONS ////
+    /////////////////////////////////////
+
+    function pauseBorrowing() external onlyGuardian {
+        borrowPaused = true;
+
+        emit BorrowPaused();
+    }
+
+    function unpauseBorrowing() external onlyGuardian {
+        borrowPaused = false;
+
+        emit BorrowUnpaused();
+    }
+
+    function pauseLiquidation() external onlyGuardian {
+        liquidationPaused = true;
+
+        emit LiquidationPaused();
+    }
+
+    function unpauseLiquidation() external onlyGuardian {
+        liquidationPaused = false;
+
+        emit LiquidationUnpaused();
+    }
+
+    function pauseDepositing() external onlyGuardian {
+        depositPaused = true;
+
+        emit DepositPaused();
+    }
+
+    function unpauseDepositing() external onlyGuardian {
+        depositPaused = false;
+
+        emit DepositUnpaused();
+    }
+
     ///////////////////////////
     //// OWNER FUNCTIONS ////
-    ///////////////////////////
+    //////////////////////////
 
     function updateMaxBorrowRatio(uint256 newRatio) external onlyOwner {
         if (newRatio == 0 || newRatio > 100) revert RiskEngine__InvalidRatio();
@@ -178,6 +265,20 @@ contract RiskEngine {
         emit LiquidationBonusUpdated(oldBonus, newBonus);
     }
 
+    function updateSupplyCap(uint256 newCap) external onlyOwner {
+        uint256 oldCap = supplyCap;
+        supplyCap = newCap;
+
+        emit SupplyCapUpdated(oldCap, newCap);
+    }
+
+    function updateBorrowCap(uint256 newCap) external onlyOwner {
+        uint256 oldCap = borrowCap;
+        borrowCap = newCap;
+
+        emit BorrowCapUpdated(oldCap, newCap);
+    }
+
     /////////////////////
     //// OWNERSHIP ////
     ////////////////////
@@ -188,5 +289,11 @@ contract RiskEngine {
         }
 
         owner = newOwner;
+    }
+
+    function transferGuardian(address newGuardian) external onlyOwner {
+        if (newGuardian == address(0)) revert RiskEngine__InvalidGuardian();
+
+        guardian = newGuardian;
     }
 }

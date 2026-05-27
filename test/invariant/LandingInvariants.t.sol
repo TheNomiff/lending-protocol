@@ -20,7 +20,7 @@ contract LandingInvariants is StdInvariant, Test {
         MockV3Aggregator feed = new MockV3Aggregator(8, 2000e8);
         PriceOracle oracle = new PriceOracle(address(feed));
         oracle.setStaleTime(500 days);
-        riskEngine = new RiskEngine();
+        riskEngine = new RiskEngine(1000 ether, 500 ether);
         timelock = new Timelock();
         oracle.transferOwnership(address(timelock));
         riskEngine.transferOwnership(address(timelock));

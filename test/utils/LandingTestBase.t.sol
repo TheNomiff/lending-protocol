@@ -26,7 +26,7 @@ abstract contract LandingTestBase is Test {
         mockFeed = new MockV3Aggregator(FEED_DECIMALS, ETH_PRICE);
         oracle = new PriceOracle(address(mockFeed));
         oracle.setStaleTime(500 days);
-        riskEngine = new RiskEngine();
+        riskEngine = new RiskEngine(1000 ether, 500 ether);
         timelock = new Timelock();
         oracle.transferOwnership(address(timelock));
         riskEngine.transferOwnership(address(timelock));

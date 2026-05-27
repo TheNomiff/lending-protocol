@@ -34,6 +34,11 @@ contract Landing is ReentrancyGuard {
     error Landing__HealthFactorOk();
     error Landing__LiquidationBonusFailed();
     error Landing__HealthFactorNotImproved();
+    error Landing__SupplyCapExceeded();
+    error Landing__BorrowCapExceeded();
+    error Landing__BorrowPaused();
+    error Landing__DepositPaused();
+    error Landing__LiquidationPaused();
 
     ////////////////////
     ///// EVENTS /////
@@ -54,11 +59,12 @@ contract Landing is ReentrancyGuard {
     ////////////////////////////
 
     uint256 public totalLiquidity;
+    uint256 public totalSupply;
+    uint256 public totalBorrow;
     uint256 public constant INTEREST_RATE = 5e16;
     uint256 public constant INTEREST_RATE_PER_SECOND = INTEREST_RATE / 365 days;
     uint256 public constant PRECISION = 1e18;
     uint256 public constant LIQUIDATION_PRECISION = 100;
-    uint256 public constant LIQUIDATION_BONUS = 10;
 
     ////////////////////////////////
     ///// ORACLE & IMMUTABLE /////
@@ -91,7 +97,9 @@ contract Landing is ReentrancyGuard {
         if (_oracle == address(0)) revert Landing__InvalidOracle();
         oracle = PriceOracle(_oracle);
 
-        if (riskEngineAddress == address(0)) revert Landing__InvalidRiskEngine();
+        if (riskEngineAddress == address(0)) {
+            revert Landing__InvalidRiskEngine();
+        }
         riskEngine = RiskEngine(riskEngineAddress);
 
         owner = msg.sender;
@@ -102,17 +110,30 @@ contract Landing is ReentrancyGuard {
     ///////////////////////////////
 
     function deposit() external payable nonReentrant {
+        if (riskEngine.depositPaused()) {
+            revert Landing__DepositPaused();
+        }
+
         if (msg.value == 0) revert Landing__AmountZero(); // Revert if the user tries to deposit 0 ETH.
 
         User storage user = users[msg.sender];
 
+        if (!riskEngine.canSupply(totalSupply, msg.value)) {
+            revert Landing__SupplyCapExceeded();
+        }
+
         user.deposited += msg.value; // Accounting for the user's deposited amount, which will be used as collateral for borrowing.
         totalLiquidity += msg.value; // Total liquidity increases by the deposited amount, because the protocol can lend that amount to other users.
+        totalSupply += msg.value;
 
         emit Deposited(msg.sender, address(0), msg.value);
     }
 
     function borrow(uint256 amount) external nonReentrant moreThanZero(amount) {
+        if (riskEngine.borrowPaused()) {
+            revert Landing__BorrowPaused();
+        }
+
         User storage user = users[msg.sender];
 
         _accrueInterest(user);
@@ -126,11 +147,16 @@ contract Landing is ReentrancyGuard {
             revert Landing__BorrowExceedsCollateral();
         }
 
+        if (!riskEngine.canGlobalBorrow(totalBorrow, amount)) {
+            revert Landing__BorrowCapExceeded();
+        }
+
         if (amount > totalLiquidity) revert Landing__NotEnoughLiquidity(); // $200 > totalLiquidity reverts, because the protocol doesn't have enough funds to Lend.
 
         user.borrowed += amount; // $200
         user.lastBorrowTimestamp = block.timestamp;
         totalLiquidity -= amount; // Total liqidity decreases by the borrow amount, because the protocol is Lending that amount to the user.
+        totalBorrow += amount;
 
         // send the borrow amount to the user
 
@@ -161,6 +187,7 @@ contract Landing is ReentrancyGuard {
 
         user.deposited = remainingCollateral;
         totalLiquidity -= amount;
+        totalSupply -= amount;
 
         (bool success,) = payable(msg.sender).call{value: amount}("");
         if (!success) revert Landing__WithdrawnFailed();
@@ -193,6 +220,7 @@ contract Landing is ReentrancyGuard {
         } // Set the borrow timestamp to 0 if the user's debt is 0.
 
         totalLiquidity += repayAmount;
+        totalBorrow -= repayAmount;
 
         if (extra > 0) {
             (bool success,) = payable(msg.sender).call{value: extra}("");
@@ -203,6 +231,10 @@ contract Landing is ReentrancyGuard {
     }
 
     function liquidate(address userAddress) external payable nonReentrant moreThanZero(msg.value) {
+        if (riskEngine.liquidationPaused()) {
+            revert Landing__LiquidationPaused();
+        }
+
         User storage user = users[userAddress];
 
         _accrueInterest(user); // Accrue interest on the user's borrow before allowing them to be liquidated.
@@ -224,8 +256,11 @@ contract Landing is ReentrancyGuard {
             if (!success) revert Landing__RefundFailed();
         }
 
+        uint256 startingHF = _healthFactor(user);
+
         user.borrowed -= repayAmount;
         totalLiquidity += repayAmount;
+        totalBorrow -= repayAmount;
 
         if (user.borrowed > 0) {
             user.lastBorrowTimestamp = block.timestamp; // Update the user's last borrow timestamp to the current block timestamp after the liquidation, to ensure that the interest is calculated correctly for the remaining debt.
@@ -238,8 +273,6 @@ contract Landing is ReentrancyGuard {
         if (collateralToSeize > user.deposited) {
             collateralToSeize = user.deposited;
         }
-
-        uint256 startingHF = _healthFactor(user);
 
         user.deposited -= collateralToSeize; // Reduce the user's deposited collateral by the amount to seize, which is the collateral that the liquidator will receive as a reward for performing the liquidation.
 
