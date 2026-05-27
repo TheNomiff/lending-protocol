@@ -198,34 +198,41 @@ contract Landing is ReentrancyGuard {
     function repay() external payable nonReentrant {
         User storage user = users[msg.sender];
 
-        if (msg.value == 0) revert Landing__AmountZero(); // Reverts if the user tries to repay 0 ETH.
+        if (msg.value == 0) revert Landing__AmountZero();
 
-        _accrueInterest(user); // Accrue interest on the user's borrow before allowing them to repay, to ensure that the interest is included in the repayment amount.
+        _accrueInterest(user);
 
-        uint256 userDebt = user.borrowed; // user's total debt, including the interest, that they need to repay.
-        if (userDebt == 0) revert Landing__NotAnyBorrow(); // Reverts if the user tries to repay but they don't have any borrow.
+        uint256 debt = user.borrowed;
+
+        if (debt == 0) revert Landing__NotAnyBorrow();
 
         uint256 repayAmount = msg.value;
 
-        if (repayAmount > userDebt) {
-            repayAmount = userDebt;
-        } // If the user tries to repay more than their total debt, we set the repay amount to the user's total debt to avoid overpaying and to ensure that the use's debt is fully repaid without leaving any excess amount that would need to be refunded.
+        if (repayAmount > debt) {
+            repayAmount = debt;
+        }
 
         uint256 extra = msg.value - repayAmount;
 
-        user.borrowed -= repayAmount; // Accounting update the user's borrowed amount by subtracting the repay amount, which reduces their debt.
+        user.borrowed = debt - repayAmount;
 
         if (user.borrowed == 0) {
             user.lastBorrowTimestamp = 0;
-        } // Set the borrow timestamp to 0 if the user's debt is 0.
+        }
 
         totalLiquidity += repayAmount;
-        totalBorrow -= repayAmount;
+
+        if (repayAmount >= totalBorrow) {
+            totalBorrow = 0;
+        } else {
+            totalBorrow -= repayAmount;
+        }
 
         if (extra > 0) {
             (bool success,) = payable(msg.sender).call{value: extra}("");
+
             if (!success) revert Landing__RefundFailed();
-        } // Refund any excess amount to the user if they overpaid, which can happen if the user tries to repay more than their total debt.
+        }
 
         emit Repaid(msg.sender, address(0), repayAmount);
     }
@@ -305,6 +312,7 @@ contract Landing is ReentrancyGuard {
 
         if (interest > 0) {
             user.borrowed += interest;
+            totalBorrow += interest;
         }
 
         if (user.borrowed > 0) {

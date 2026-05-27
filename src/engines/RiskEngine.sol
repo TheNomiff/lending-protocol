@@ -266,6 +266,8 @@ contract RiskEngine {
     }
 
     function updateSupplyCap(uint256 newCap) external onlyOwner {
+        if (newCap > supplyCap) revert RiskEngine__InvalidCaps();
+
         uint256 oldCap = supplyCap;
         supplyCap = newCap;
 
@@ -273,6 +275,8 @@ contract RiskEngine {
     }
 
     function updateBorrowCap(uint256 newCap) external onlyOwner {
+        if (newCap > borrowCap) revert RiskEngine__InvalidCaps();
+
         uint256 oldCap = borrowCap;
         borrowCap = newCap;
 
