@@ -4,7 +4,7 @@
 
 `RiskEngine.sol` serves as the primary risk management and validation layer for the protocol. It is isolated from core accounting logic to enforce collateral safety, liquidation thresholds, protocol caps, and emergency controls.
 
-By decoupling risk calculations from core execution, `Lending.sol` remains strictly focused on user asset accounting (deposits, withdrawals, borrowing, and repayments), while the `RiskEngine` independently governs protocol solvency and system limits.
+By decoupling risk calculations from core executionV, `Lending.sol` remains strictly focused on user asset accounting (deposits, withdrawals, borrowing, and repayments), while the `RiskEngine` independently governs protocol solvency and system limits.
 
 ---
 
