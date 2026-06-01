@@ -34,6 +34,12 @@ contract RiskEngineTest is RiskTestBase {
         new RiskEngine(SUPPLY_CAP, 0);
     }
 
+    function testConstructorRevertsIfBorrowCapExceedsSupplyCap() public {
+        vm.expectRevert(RiskEngine.RiskEngine__InvalidCaps.selector);
+
+        new RiskEngine(100 ether, 200 ether);
+    }
+
     //////////////////////////////////
     ////// HEALTH FACTOR TESTS //////
     //////////////////////////////////
