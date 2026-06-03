@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {RiskEngine} from "../../src/engines/RiskEngine.sol";
 import {RiskTestBase} from "../utils/RiskTestBase.t.sol";
+import {console} from "forge-std/console.sol";
 
 contract RiskEngineTest is RiskTestBase {
     //////////////////////////////////
@@ -44,9 +45,56 @@ contract RiskEngineTest is RiskTestBase {
     ////// HEALTH FACTOR TESTS //////
     //////////////////////////////////
 
-    function testHealthFactorReturnsMaxWhenDebtZero() public {}
+    function testHealthFactorReturnsMaxWhenDebtZero() public view {
+        uint256 HF = riskEngine.healthFactor(100 ether, 0);
+        assertEq(HF, type(uint256).max);
+    }
 
-    function testHealthFactorCalculation() public {}
+    function testHealthFactorCalculationDynamic() public view {
+        uint256 collateralUsd = 100 ether;
+        uint256 debtUsd = 30 ether;
+
+        uint256 expectedCollateral =
+            (collateralUsd * riskEngine.liquidationThreshold()) / riskEngine.LIQUIDATION_PRECISION();
+        uint256 expectedHF = (expectedCollateral * riskEngine.PRECISION()) / debtUsd;
+
+        uint256 HF = riskEngine.healthFactor(collateralUsd, debtUsd);
+        assertEq(HF, expectedHF);
+    }
+
+    /*
+        HF claculation formula:
+
+        collateralAdjusted = (collateral * liquidationThreshold) / LIQUIDATION_PRECISION,
+
+        return (collateralAdjusted * PRECISION) / debt
+    */
+
+    function testHealthFactorBelowOne() public view {
+        uint256 collateralUsd = 100 ether;
+        uint256 debtUsd = 80 ether;
+
+        uint256 HF = riskEngine.healthFactor(collateralUsd, debtUsd);
+
+        console.log("Health Factor: ", HF);
+
+        assertTrue(HF < 1e18);
+        // (100 * 75%) = 75 collateral. (75 * 1e18) / 80 = 0.9375e18
+        assertEq(HF, 0.9375 ether);
+    }
+
+    function testHealthFactorAboveOne() public view {
+        uint256 collateralUsd = 100 ether;
+        uint256 debtUsd = 30 ether;
+
+        uint256 HF = riskEngine.healthFactor(collateralUsd, debtUsd);
+
+        console.log("Health Factor: ", HF);
+
+        // (100 * 75%) = 75 collateral. (75 * 1e18) / 30 = 2.5e18
+        assertGt(HF, riskEngine.minHealthFactor());
+        assertEq(HF, 2.5e18);
+    }
 
     //////////////////////////////////
     ////// BORROW TESTS /////////////
