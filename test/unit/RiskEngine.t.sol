@@ -76,10 +76,7 @@ contract RiskEngineTest is RiskTestBase {
 
         uint256 HF = riskEngine.healthFactor(collateralUsd, debtUsd);
 
-        console.log("Health Factor: ", HF);
-
         assertTrue(HF < 1e18);
-        // (100 * 75%) = 75 collateral. (75 * 1e18) / 80 = 0.9375e18
         assertEq(HF, 0.9375 ether);
     }
 
@@ -89,9 +86,6 @@ contract RiskEngineTest is RiskTestBase {
 
         uint256 HF = riskEngine.healthFactor(collateralUsd, debtUsd);
 
-        console.log("Health Factor: ", HF);
-
-        // (100 * 75%) = 75 collateral. (75 * 1e18) / 30 = 2.5e18
         assertGt(HF, riskEngine.minHealthFactor());
         assertEq(HF, 2.5e18);
     }
@@ -100,9 +94,37 @@ contract RiskEngineTest is RiskTestBase {
     ////// BORROW TESTS /////////////
     //////////////////////////////////
 
-    function testCanBorrowReturnsTrue() public {}
+    function testCanBorrowReturnsTrue() public view {
+        uint256 collateralUsd = 100 ether;
+        uint256 debtUsd = 30 ether;
 
-    function testCanBorrowReturnsFalse() public {}
+        bool canBorrow = riskEngine.canBorrow(collateralUsd, debtUsd);
+
+        assertTrue(canBorrow);
+        assertEq(riskEngine.maxBorrow(collateralUsd), 50 ether);
+    }
+
+    function testCanBorrowReturnsFalse() public view {
+        uint256 collateralUsd = 100 ether;
+        uint256 debtUsd = 60 ether;
+
+        bool canBorrow = riskEngine.canBorrow(collateralUsd, debtUsd);
+
+        assertFalse(canBorrow);
+        assertEq(riskEngine.maxBorrow(collateralUsd), 50 ether);
+    }
+
+    function testCanBorrowAtExactLimit() public view {
+        uint256 collateralUsd = 100 ether;
+        uint256 debtUsd = 50 ether;
+
+        uint256 maxBorrow = riskEngine.maxBorrow(collateralUsd);
+        bool canBorrow = riskEngine.canBorrow(collateralUsd, debtUsd);
+
+        assertTrue(canBorrow);
+        assertEq(riskEngine.maxBorrow(collateralUsd), 50 ether);
+        assert(debtUsd == maxBorrow);
+    }
 
     //////////////////////////////////
     ////// WITHDRAW TESTS ///////////
