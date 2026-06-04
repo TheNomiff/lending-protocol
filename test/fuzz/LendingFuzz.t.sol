@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Landing} from "../../src/Landing.sol";
-import {LandingTestBase} from "../utils/LandingTestBase.t.sol";
+import {Lending} from "../../src/Lending.sol";
+import {LendingTestBase} from "../utils/LendingTestBase.t.sol";
 
-contract LandingFuzzTest is LandingTestBase {
+contract LendingFuzzTest is LendingTestBase {
     function testFuzz_DepositIncreasesBalanceAndLiquidity(uint96 depositAmount) public {
         uint256 amount = bound(uint256(depositAmount), 1 wei, 100 ether);
 
@@ -13,7 +13,7 @@ contract LandingFuzzTest is LandingTestBase {
 
         (uint256 depositedAmount,,) = _userPosition(USER);
         assertEq(depositedAmount, amount);
-        assertEq(landing.totalLiquidity(), amount);
+        assertEq(lending.totalLiquidity(), amount);
     }
 
     function testFuzz_BorrowWithinLimitSucceeds(uint96 depositAmount, uint96 borrowAmount) public {
@@ -26,7 +26,7 @@ contract LandingFuzzTest is LandingTestBase {
 
         (, uint256 borrowedAmount,) = _userPosition(USER);
         assertEq(borrowedAmount, borrow);
-        assertEq(landing.totalLiquidity(), deposit - borrow);
+        assertEq(lending.totalLiquidity(), deposit - borrow);
     }
 
     function testFuzz_RepayNeverLeavesNegativeDebt(uint96 depositAmount, uint96 borrowAmount, uint96 repayAmount)

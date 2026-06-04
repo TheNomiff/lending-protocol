@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Landing} from "../../src/Landing.sol";
-import {LandingTestBase} from "../utils/LandingTestBase.t.sol";
+import {Lending} from "../../src/Lending.sol";
+import {LendingTestBase} from "../utils/LendingTestBase.t.sol";
 
-contract DepositTest is LandingTestBase {
+contract DepositTest is LendingTestBase {
     function testDepositSuccess() public {
         uint256 depositAmount = 10 ether;
 
@@ -12,13 +12,13 @@ contract DepositTest is LandingTestBase {
         (uint256 depositedAmount,,) = _userPosition(USER);
 
         assertEq(depositedAmount, depositAmount);
-        assertEq(landing.totalLiquidity(), depositAmount);
+        assertEq(lending.totalLiquidity(), depositAmount);
     }
 
     function testDepositRevertsIfAmountZero() public {
         vm.prank(USER);
-        vm.expectRevert(Landing.Landing__AmountZero.selector);
-        landing.deposit{value: 0}();
+        vm.expectRevert(Lending.Lending__AmountZero.selector);
+        lending.deposit{value: 0}();
     }
 
     function testMultipleUsersCanDeposit() public {
@@ -28,9 +28,9 @@ contract DepositTest is LandingTestBase {
         _depositAs(USER_A, depositAmount);
         _depositAs(USER_B, depositAmount);
 
-        assertEq(landing.getBalance(USER), depositAmount);
-        assertEq(landing.getBalance(USER_A), depositAmount);
-        assertEq(landing.getBalance(USER_B), depositAmount);
-        assertEq(landing.totalLiquidity(), depositAmount * 3);
+        assertEq(lending.getBalance(USER), depositAmount);
+        assertEq(lending.getBalance(USER_A), depositAmount);
+        assertEq(lending.getBalance(USER_B), depositAmount);
+        assertEq(lending.totalLiquidity(), depositAmount * 3);
     }
 }

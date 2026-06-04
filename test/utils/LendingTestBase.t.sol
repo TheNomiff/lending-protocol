@@ -2,14 +2,14 @@
 pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
-import {Landing} from "../../src/Landing.sol";
+import {Lending} from "../../src/Lending.sol";
 import {PriceOracle} from "../../src/oracle/PriceOracle.sol";
 import {MockV3Aggregator} from "@chainlink/contracts/src/v0.8/tests/MockV3Aggregator.sol";
 import {RiskEngine} from "../../src/engines/RiskEngine.sol";
 import {Timelock} from "../../src/governance/Timelock.sol";
 
-abstract contract LandingTestBase is Test {
-    Landing internal landing;
+abstract contract LendingTestBase is Test {
+    Lending internal lending;
     PriceOracle internal oracle;
     MockV3Aggregator internal mockFeed;
     RiskEngine internal riskEngine;
@@ -31,7 +31,7 @@ abstract contract LandingTestBase is Test {
         oracle.transferOwnership(address(timelock));
         riskEngine.transferOwnership(address(timelock));
 
-        landing = new Landing(address(oracle), address(riskEngine));
+        lending = new Lending(address(oracle), address(riskEngine));
 
         _fundUser(USER, 100 ether);
         _fundUser(USER_A, 100 ether);
@@ -44,22 +44,22 @@ abstract contract LandingTestBase is Test {
 
     function _depositAs(address user, uint256 amount) internal {
         vm.prank(user);
-        landing.deposit{value: amount}();
+        lending.deposit{value: amount}();
     }
 
     function _borrowAs(address user, uint256 amount) internal {
         vm.prank(user);
-        landing.borrow(amount);
+        lending.borrow(amount);
     }
 
     function _withdrawAs(address user, uint256 amount) internal {
         vm.prank(user);
-        landing.withdraw(amount);
+        lending.withdraw(amount);
     }
 
     function _repayAs(address user, uint256 amount) internal {
         vm.prank(user);
-        landing.repay{value: amount}();
+        lending.repay{value: amount}();
     }
 
     function _openPosition(address user, uint256 depositAmount, uint256 borrowAmount) internal {
@@ -72,6 +72,6 @@ abstract contract LandingTestBase is Test {
         view
         returns (uint256 deposited, uint256 borrowed, uint256 lastBorrowTimestamp)
     {
-        return landing.users(user);
+        return lending.users(user);
     }
 }

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Landing} from "../../src/Landing.sol";
-import {LandingTestBase} from "../utils/LandingTestBase.t.sol";
+import {Lending} from "../../src/Lending.sol";
+import {LendingTestBase} from "../utils/LendingTestBase.t.sol";
 
-contract RepayTest is LandingTestBase {
+contract RepayTest is LendingTestBase {
     function testRepaySuccess() public {
         _openPosition(USER, 10 ether, 4 ether);
         _repayAs(USER, 2 ether);
@@ -34,13 +34,13 @@ contract RepayTest is LandingTestBase {
         _depositAs(USER, 1 ether);
 
         vm.prank(USER);
-        vm.expectRevert(Landing.Landing__NotAnyBorrow.selector);
-        landing.repay{value: 1 ether}();
+        vm.expectRevert(Lending.Lending__NotAnyBorrow.selector);
+        lending.repay{value: 1 ether}();
     }
 
     function testRepayRevertsIfAmountZero() public {
         vm.prank(USER);
-        vm.expectRevert(Landing.Landing__AmountZero.selector);
-        landing.repay{value: 0}();
+        vm.expectRevert(Lending.Lending__AmountZero.selector);
+        lending.repay{value: 0}();
     }
 }

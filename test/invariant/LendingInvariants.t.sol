@@ -3,16 +3,16 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
-import {Landing} from "../../src/Landing.sol";
+import {Lending} from "../../src/Lending.sol";
 import {PriceOracle} from "../../src/oracle/PriceOracle.sol";
 import {MockV3Aggregator} from "@chainlink/contracts/src/v0.8/tests/MockV3Aggregator.sol";
-import {LandingHandler} from "./LandingHandler.t.sol";
+import {LendingHandler} from "./LendingHandler.t.sol";
 import {RiskEngine} from "../../src/engines/RiskEngine.sol";
 import {Timelock} from "../../src/governance/Timelock.sol";
 
-contract LandingInvariants is StdInvariant, Test {
-    Landing internal landing;
-    LandingHandler internal handler;
+contract LendingInvariants is StdInvariant, Test {
+    Lending internal lending;
+    LendingHandler internal handler;
     RiskEngine internal riskEngine;
     Timelock internal timelock;
 
@@ -24,13 +24,13 @@ contract LandingInvariants is StdInvariant, Test {
         timelock = new Timelock();
         oracle.transferOwnership(address(timelock));
         riskEngine.transferOwnership(address(timelock));
-        landing = new Landing(address(oracle), address(riskEngine));
-        handler = new LandingHandler(landing);
+        lending = new Lending(address(oracle), address(riskEngine));
+        handler = new LendingHandler(lending);
 
         targetContract(address(handler));
     }
 
     function invariant_TotalLiquidityEqualsProtocolBalance() public view {
-        assertEq(landing.totalLiquidity(), address(landing).balance);
+        assertEq(lending.totalLiquidity(), address(lending).balance);
     }
 }

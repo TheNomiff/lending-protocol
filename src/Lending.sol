@@ -5,7 +5,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {PriceOracle} from "./oracle/PriceOracle.sol";
 import {RiskEngine} from "./engines/RiskEngine.sol";
 
-contract Landing is ReentrancyGuard {
+contract Lending is ReentrancyGuard {
     ////////////////////
     ///// STRUCT /////
     ///////////////////
@@ -20,25 +20,25 @@ contract Landing is ReentrancyGuard {
     ///// ERRORS /////
     ///////////////////
 
-    error Landing__AmountZero();
-    error Landing__BorrowedFailed();
-    error Landing__BorrowExceedsCollateral();
-    error Landing__NotEnoughLiquidity();
-    error Landing__InsufficientBalance();
-    error Landing__NotAnyBorrow();
-    error Landing__WithdrawnFailed();
-    error Landing__RefundFailed();
-    error Landing__InvalidOracle();
-    error Landing__InvalidRiskEngine();
-    error Landing__BreakHealthFactor();
-    error Landing__HealthFactorOk();
-    error Landing__LiquidationBonusFailed();
-    error Landing__HealthFactorNotImproved();
-    error Landing__SupplyCapExceeded();
-    error Landing__BorrowCapExceeded();
-    error Landing__BorrowPaused();
-    error Landing__DepositPaused();
-    error Landing__LiquidationPaused();
+    error Lending__AmountZero();
+    error Lending__BorrowedFailed();
+    error Lending__BorrowExceedsCollateral();
+    error Lending__NotEnoughLiquidity();
+    error Lending__InsufficientBalance();
+    error Lending__NotAnyBorrow();
+    error Lending__WithdrawnFailed();
+    error Lending__RefundFailed();
+    error Lending__InvalidOracle();
+    error Lending__InvalidRiskEngine();
+    error Lending__BreakHealthFactor();
+    error Lending__HealthFactorOk();
+    error Lending__LiquidationBonusFailed();
+    error Lending__HealthFactorNotImproved();
+    error Lending__SupplyCapExceeded();
+    error Lending__BorrowCapExceeded();
+    error Lending__BorrowPaused();
+    error Lending__DepositPaused();
+    error Lending__LiquidationPaused();
 
     ////////////////////
     ///// EVENTS /////
@@ -85,7 +85,7 @@ contract Landing is ReentrancyGuard {
     //////////////////////
 
     modifier moreThanZero(uint256 amount) {
-        if (amount == 0) revert Landing__AmountZero();
+        if (amount == 0) revert Lending__AmountZero();
         _;
     }
 
@@ -94,11 +94,11 @@ contract Landing is ReentrancyGuard {
     ////////////////////////
 
     constructor(address _oracle, address riskEngineAddress) {
-        if (_oracle == address(0)) revert Landing__InvalidOracle();
+        if (_oracle == address(0)) revert Lending__InvalidOracle();
         oracle = PriceOracle(_oracle);
 
         if (riskEngineAddress == address(0)) {
-            revert Landing__InvalidRiskEngine();
+            revert Lending__InvalidRiskEngine();
         }
         riskEngine = RiskEngine(riskEngineAddress);
 
@@ -111,15 +111,15 @@ contract Landing is ReentrancyGuard {
 
     function deposit() external payable nonReentrant {
         if (riskEngine.depositPaused()) {
-            revert Landing__DepositPaused();
+            revert Lending__DepositPaused();
         }
 
-        if (msg.value == 0) revert Landing__AmountZero(); // Revert if the user tries to deposit 0 ETH.
+        if (msg.value == 0) revert Lending__AmountZero(); // Revert if the user tries to deposit 0 ETH.
 
         User storage user = users[msg.sender];
 
         if (!riskEngine.canSupply(totalSupply, msg.value)) {
-            revert Landing__SupplyCapExceeded();
+            revert Lending__SupplyCapExceeded();
         }
 
         user.deposited += msg.value; // Accounting for the user's deposited amount, which will be used as collateral for borrowing.
@@ -131,7 +131,7 @@ contract Landing is ReentrancyGuard {
 
     function borrow(uint256 amount) external nonReentrant moreThanZero(amount) {
         if (riskEngine.borrowPaused()) {
-            revert Landing__BorrowPaused();
+            revert Lending__BorrowPaused();
         }
 
         User storage user = users[msg.sender];
@@ -144,14 +144,14 @@ contract Landing is ReentrancyGuard {
         uint256 totalDebt = currentDebt + borrowUsd; // $0 + $200 = $200, but if the user already has a borrow, it will be $110 + $200 = $300, and if the user has a borrow of $400, it will be $400 + $200 = $600, which exceeds the max borrow of $500 and reverts.
 
         if (!riskEngine.canBorrow(collateralUsd, totalDebt)) {
-            revert Landing__BorrowExceedsCollateral();
+            revert Lending__BorrowExceedsCollateral();
         }
 
         if (!riskEngine.canGlobalBorrow(totalBorrow, amount)) {
-            revert Landing__BorrowCapExceeded();
+            revert Lending__BorrowCapExceeded();
         }
 
-        if (amount > totalLiquidity) revert Landing__NotEnoughLiquidity(); // $200 > totalLiquidity reverts, because the protocol doesn't have enough funds to Lend.
+        if (amount > totalLiquidity) revert Lending__NotEnoughLiquidity(); // $200 > totalLiquidity reverts, because the protocol doesn't have enough funds to Lend.
 
         user.borrowed += amount; // $200
         user.lastBorrowTimestamp = block.timestamp;
@@ -161,7 +161,7 @@ contract Landing is ReentrancyGuard {
         // send the borrow amount to the user
 
         (bool success,) = payable(msg.sender).call{value: amount}("");
-        if (!success) revert Landing__BorrowedFailed();
+        if (!success) revert Lending__BorrowedFailed();
 
         emit Borrowed(msg.sender, address(0), amount);
     }
@@ -171,7 +171,7 @@ contract Landing is ReentrancyGuard {
 
         uint256 currentBalance = user.deposited; // Current balance of the user.
 
-        if (currentBalance < amount) revert Landing__InsufficientBalance(); // Revert if the user tries to withdraw more than their deposited amount.
+        if (currentBalance < amount) revert Lending__InsufficientBalance(); // Revert if the user tries to withdraw more than their deposited amount.
 
         _accrueInterest(user); // Accrue interest on the user's borrow before allowing them to withdraw, to ensure that the health factor is calculated correctly.
 
@@ -182,7 +182,7 @@ contract Landing is ReentrancyGuard {
         uint256 debtUsd = oracle.getETHValueInUSD(getTotalDebt(msg.sender)); // Get the USD value of the user's debt, including the interest.
 
         if (!riskEngine.canWithdraw(remainingCollateralUsd, debtUsd)) {
-            revert Landing__BorrowExceedsCollateral();
+            revert Lending__BorrowExceedsCollateral();
         }
 
         user.deposited = remainingCollateral;
@@ -190,7 +190,7 @@ contract Landing is ReentrancyGuard {
         totalSupply -= amount;
 
         (bool success,) = payable(msg.sender).call{value: amount}("");
-        if (!success) revert Landing__WithdrawnFailed();
+        if (!success) revert Lending__WithdrawnFailed();
 
         emit Withdrawn(msg.sender, address(0), amount);
     }
@@ -198,13 +198,13 @@ contract Landing is ReentrancyGuard {
     function repay() external payable nonReentrant {
         User storage user = users[msg.sender];
 
-        if (msg.value == 0) revert Landing__AmountZero();
+        if (msg.value == 0) revert Lending__AmountZero();
 
         _accrueInterest(user);
 
         uint256 debt = user.borrowed;
 
-        if (debt == 0) revert Landing__NotAnyBorrow();
+        if (debt == 0) revert Lending__NotAnyBorrow();
 
         uint256 repayAmount = msg.value;
 
@@ -231,7 +231,7 @@ contract Landing is ReentrancyGuard {
         if (extra > 0) {
             (bool success,) = payable(msg.sender).call{value: extra}("");
 
-            if (!success) revert Landing__RefundFailed();
+            if (!success) revert Lending__RefundFailed();
         }
 
         emit Repaid(msg.sender, address(0), repayAmount);
@@ -239,7 +239,7 @@ contract Landing is ReentrancyGuard {
 
     function liquidate(address userAddress) external payable nonReentrant moreThanZero(msg.value) {
         if (riskEngine.liquidationPaused()) {
-            revert Landing__LiquidationPaused();
+            revert Lending__LiquidationPaused();
         }
 
         User storage user = users[userAddress];
@@ -260,7 +260,7 @@ contract Landing is ReentrancyGuard {
         if (extra > 0) {
             (bool success,) = payable(msg.sender).call{value: extra}("");
 
-            if (!success) revert Landing__RefundFailed();
+            if (!success) revert Lending__RefundFailed();
         }
 
         uint256 startingHF = _healthFactor(user);
@@ -285,10 +285,10 @@ contract Landing is ReentrancyGuard {
 
         uint256 endingHF = _healthFactor(user);
 
-        if (endingHF <= startingHF) revert Landing__HealthFactorNotImproved();
+        if (endingHF <= startingHF) revert Lending__HealthFactorNotImproved();
 
         (bool sent,) = payable(msg.sender).call{value: collateralToSeize}("");
-        if (!sent) revert Landing__LiquidationBonusFailed();
+        if (!sent) revert Lending__LiquidationBonusFailed();
 
         emit Liquidated(msg.sender, userAddress, repayAmount, collateralToSeize);
     }
@@ -332,7 +332,7 @@ contract Landing is ReentrancyGuard {
         uint256 HF = _healthFactor(user);
 
         if (!riskEngine.isLiquidatable(HF)) {
-            revert Landing__HealthFactorOk();
+            revert Lending__HealthFactorOk();
         }
     }
 

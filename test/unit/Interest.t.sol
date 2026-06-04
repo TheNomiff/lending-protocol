@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Landing} from "../../src/Landing.sol";
-import {LandingTestBase} from "../utils/LandingTestBase.t.sol";
+import {Lending} from "../../src/Lending.sol";
+import {LendingTestBase} from "../utils/LendingTestBase.t.sol";
 
-contract InterestTest is LandingTestBase {
+contract InterestTest is LendingTestBase {
     function testInterestAccruesOverTime() public {
         _openPosition(USER, 10 ether, 5 ether);
         skip(1 days);
 
-        uint256 totalDebt = landing.getTotalDebt(USER);
+        uint256 totalDebt = lending.getTotalDebt(USER);
         (, uint256 totalBorrow,) = _userPosition(USER);
         assertGt(totalDebt, totalBorrow);
     }
@@ -18,38 +18,38 @@ contract InterestTest is LandingTestBase {
         _openPosition(USER, 10 ether, 5 ether);
         skip(10 days);
 
-        uint256 debt = landing.getTotalDebt(USER);
-        uint256 collateral = landing.getBalance(USER);
+        uint256 debt = lending.getTotalDebt(USER);
+        uint256 collateral = lending.getBalance(USER);
         assertGt(debt, collateral / 2);
 
         vm.prank(USER);
-        vm.expectRevert(Landing.Landing__BorrowExceedsCollateral.selector);
-        landing.borrow(5 ether);
+        vm.expectRevert(Lending.Lending__BorrowExceedsCollateral.selector);
+        lending.borrow(5 ether);
     }
 
     function testWithdrawRevertsAfterInterestAccrual() public {
         _openPosition(USER, 10 ether, 5 ether);
         skip(10 days);
 
-        uint256 debt = landing.getTotalDebt(USER);
-        uint256 collateral = landing.getBalance(USER);
+        uint256 debt = lending.getTotalDebt(USER);
+        uint256 collateral = lending.getBalance(USER);
         assertGt(debt, collateral / 2);
 
         vm.prank(USER);
-        vm.expectRevert(Landing.Landing__BorrowExceedsCollateral.selector);
-        landing.withdraw(5 ether);
+        vm.expectRevert(Lending.Lending__BorrowExceedsCollateral.selector);
+        lending.withdraw(5 ether);
     }
 
     function testRepayIncludesAccruedInterest() public {
         _openPosition(USER, 50 ether, 5 ether);
         skip(1 days);
 
-        uint256 amountRepay = landing.getTotalDebt(USER);
+        uint256 amountRepay = lending.getTotalDebt(USER);
         _repayAs(USER, amountRepay);
 
         (, uint256 totalBorrow,) = _userPosition(USER);
         assertEq(totalBorrow, 0);
-        assertEq(landing.getTotalDebt(USER), 0);
+        assertEq(lending.getTotalDebt(USER), 0);
     }
 
     function testAccrueInterestDoesNotDoubleCount() public {
@@ -57,10 +57,10 @@ contract InterestTest is LandingTestBase {
         skip(1 days);
 
         _repayAs(USER, 2 ether);
-        uint256 debtAfterFirst = landing.getTotalDebt(USER);
+        uint256 debtAfterFirst = lending.getTotalDebt(USER);
 
         skip(1 days);
-        uint256 debtAfterSecond = landing.getTotalDebt(USER);
+        uint256 debtAfterSecond = lending.getTotalDebt(USER);
         assertGt(debtAfterSecond, debtAfterFirst);
     }
 
@@ -69,7 +69,7 @@ contract InterestTest is LandingTestBase {
         skip(365 days);
 
         uint256 expectedDebt = 5.25 ether;
-        uint256 liveDebt = landing.getTotalDebt(USER);
+        uint256 liveDebt = lending.getTotalDebt(USER);
         assertApproxEqAbs(liveDebt, expectedDebt, 1e16);
     }
 
@@ -77,13 +77,13 @@ contract InterestTest is LandingTestBase {
         _openPosition(USER, 50 ether, 5 ether);
 
         skip(1 days);
-        uint256 t1 = landing.getTotalDebt(USER);
+        uint256 t1 = lending.getTotalDebt(USER);
 
         skip(1 days);
-        uint256 t2 = landing.getTotalDebt(USER);
+        uint256 t2 = lending.getTotalDebt(USER);
 
         skip(1 days);
-        uint256 t3 = landing.getTotalDebt(USER);
+        uint256 t3 = lending.getTotalDebt(USER);
 
         assertGt(t2, t1);
         assertGt(t3, t2);
