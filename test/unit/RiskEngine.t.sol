@@ -54,9 +54,11 @@ contract RiskEngineTest is RiskTestBase {
         uint256 collateralUsd = 100 ether;
         uint256 debtUsd = 30 ether;
 
-        uint256 expectedCollateral =
-            (collateralUsd * riskEngine.liquidationThreshold()) / riskEngine.LIQUIDATION_PRECISION();
-        uint256 expectedHF = (expectedCollateral * riskEngine.PRECISION()) / debtUsd;
+        uint256 expectedCollateral = (collateralUsd *
+            riskEngine.liquidationThreshold()) /
+            riskEngine.LIQUIDATION_PRECISION();
+        uint256 expectedHF = (expectedCollateral * riskEngine.PRECISION()) /
+            debtUsd;
 
         uint256 HF = riskEngine.healthFactor(collateralUsd, debtUsd);
         assertEq(HF, expectedHF);
@@ -134,7 +136,10 @@ contract RiskEngineTest is RiskTestBase {
         uint256 remainingCollateralUsd = 90 ether;
         uint256 debtUsd = 40 ether;
 
-        bool canWithdraw = riskEngine.canWithdraw(remainingCollateralUsd, debtUsd);
+        bool canWithdraw = riskEngine.canWithdraw(
+            remainingCollateralUsd,
+            debtUsd
+        );
 
         assertTrue(canWithdraw);
     }
@@ -143,7 +148,10 @@ contract RiskEngineTest is RiskTestBase {
         uint256 remainingCollateralUsd = 70 ether;
         uint256 debtUsd = 40 ether;
 
-        bool canWithdraw = riskEngine.canWithdraw(remainingCollateralUsd, debtUsd);
+        bool canWithdraw = riskEngine.canWithdraw(
+            remainingCollateralUsd,
+            debtUsd
+        );
 
         assertFalse(canWithdraw);
     }
@@ -152,7 +160,10 @@ contract RiskEngineTest is RiskTestBase {
         uint256 remainingCollateralUsd = 100 ether;
         uint256 debtUsd = 50 ether;
 
-        bool canWithdraw = riskEngine.canWithdraw(remainingCollateralUsd, debtUsd);
+        bool canWithdraw = riskEngine.canWithdraw(
+            remainingCollateralUsd,
+            debtUsd
+        );
 
         assertTrue(canWithdraw);
     }
@@ -190,9 +201,12 @@ contract RiskEngineTest is RiskTestBase {
 
     function testCalculateSeizedCollateral() public view {
         uint256 repayAmount = 10 ether;
-        uint256 expectedSeized =
-            repayAmount + ((repayAmount * riskEngine.liquidationBonus())) / riskEngine.LIQUIDATION_PRECISION();
-        uint256 seizedCollateral = riskEngine.calculateSeizedCollateral(repayAmount);
+        uint256 expectedSeized = repayAmount +
+            ((repayAmount * riskEngine.liquidationBonus())) /
+            riskEngine.LIQUIDATION_PRECISION();
+        uint256 seizedCollateral = riskEngine.calculateSeizedCollateral(
+            repayAmount
+        );
 
         assertEq(seizedCollateral, expectedSeized);
     }
@@ -202,4 +216,70 @@ contract RiskEngineTest is RiskTestBase {
 
         assertFalse(riskEngine.isLiquidatable(HF));
     }
+
+    ///////////////////////
+    ///// CAP TESTS /////
+    //////////////////////
+
+    function testCanSupplyAtCap() public view {
+        uint256 supplyAmount = riskEngine.supplyCap();
+        bool canSupply = riskEngine.canSupply(0, supplyAmount);
+
+        assertTrue(canSupply);
+    }
+
+    function testCanSupplyAboveCap() public view {
+        uint256 supplyAmount = riskEngine.supplyCap() + 100 ether;
+        bool canSupply = riskEngine.canSupply(0, supplyAmount);
+
+        assertFalse(canSupply);
+    }
+
+    function testCanBorrowAtCap() public view {
+        uint256 borrowCap = riskEngine.borrowCap();
+        bool canBorrow = riskEngine.canGlobalBorrow(0, borrowCap);
+
+        assertTrue(canBorrow);
+    }
+
+    function testCanBorrowAboveCap() public view {
+        uint256 borrowCap = riskEngine.borrowCap() + 100 ether;
+        bool canBorrow = riskEngine.canGlobalBorrow(0, borrowCap);
+
+        assertFalse(canBorrow);
+    }
+
+    /////////////////////////////
+    ///// PARAMETER TESTS /////
+    ////////////////////////////
+
+    function testUpdateThreshold() public {}
+
+    function testUpdateBonus() public {}
+
+    function testUpdateCloseFactor() public {}
+
+    /////////////////////////
+    ///// OWNER TESTS /////
+    ////////////////////////
+
+    function testOwnerCanUpdateBorrowRatio() public {}
+
+    function testNonOwnerCannotUpdateBorrowRatio() public {}
+
+    ////////////////////////////
+    ///// GUARDIAN TESTS /////
+    ///////////////////////////
+
+    function testGuardianCanPauseBorrow() public {}
+
+    function testGuardianCanPauseDeposit() public {}
+
+    /////////////////////////
+    ///// PAUSE TESTS /////
+    ////////////////////////
+
+    function testBorrowPauseWorks() public {}
+
+    function testDepositPauseWorks() public {}
 }
