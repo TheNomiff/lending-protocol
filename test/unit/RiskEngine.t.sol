@@ -418,21 +418,181 @@ contract RiskEngineTest is RiskTestBase {
         riskEngine.updateLiquidationBonus(newBonus);
     }
 
-    /////////////////////////
-    ///// OWNER TESTS /////
-    ////////////////////////
-
-    function testOwnerCanUpdateBorrowRatio() public {}
-
-    function testNonOwnerCannotUpdateBorrowRatio() public {}
-
     ////////////////////////////
     ///// GUARDIAN TESTS /////
     ///////////////////////////
 
-    function testGuardianCanPauseBorrow() public {}
+    function testOwnerCanTransferGuardian() public {
+        address newGuardian = makeAddr("New Guardian");
 
-    function testGuardianCanPauseDeposit() public {}
+        riskEngine.transferGuardian(newGuardian);
+
+        assertEq(riskEngine.guardian(), newGuardian);
+    }
+
+    function testNonOwnerCannotTransferGuardian() public {
+        address newGuardian = makeAddr("New Guardian");
+        address attacker = makeAddr("Attacker");
+
+        vm.prank(attacker);
+        vm.expectRevert(RiskEngine.RiskEngine__NotOwner.selector);
+        riskEngine.transferGuardian(newGuardian);
+    }
+
+    function testNewGuardianCanPauseAndOldGuardianCannot() public {
+        address newGuardian = makeAddr("New Guardian");
+
+        riskEngine.transferGuardian(newGuardian);
+
+        vm.expectRevert(RiskEngine.RiskEngine__InvalidGuardian.selector);
+        riskEngine.pauseBorrowing();
+
+        vm.prank(newGuardian);
+        riskEngine.pauseBorrowing();
+        assertTrue(riskEngine.borrowPaused());
+    }
+
+    //////////////////////////////////////////
+    ///// BORROW PAUSE & UNPAUSE TESTS /////
+    /////////////////////////////////////////
+
+    function testGuardianCanPauseBorrow() public {
+        bool beforeState = riskEngine.borrowPaused();
+
+        riskEngine.pauseBorrowing();
+
+        bool afterState = riskEngine.borrowPaused();
+
+        assertFalse(beforeState);
+        assertTrue(afterState);
+    }
+
+    function testGuardianCanUnpauseBorrow() public {
+        riskEngine.pauseBorrowing();
+        bool beforeState = riskEngine.borrowPaused();
+
+        riskEngine.unpauseBorrowing();
+        bool afterState = riskEngine.borrowPaused();
+
+        assertTrue(beforeState);
+        assertFalse(afterState);
+    }
+
+    function testNonGuardianCannotPauseBorrow() public {
+        address attacker = makeAddr("Attacker");
+
+        vm.prank(attacker);
+        vm.expectRevert(RiskEngine.RiskEngine__InvalidGuardian.selector);
+
+        riskEngine.pauseBorrowing();
+    }
+
+    function testNonGuardianCannotUnpauseBorrow() public {
+        riskEngine.pauseBorrowing();
+
+        address attacker = makeAddr("Attacker");
+
+        vm.prank(attacker);
+        vm.expectRevert(RiskEngine.RiskEngine__InvalidGuardian.selector);
+
+        riskEngine.unpauseBorrowing();
+    }
+
+    ///////////////////////////////////////////
+    ///// DEPOSIT PAUSE & UNPAUSE TESTS /////
+    //////////////////////////////////////////
+
+    function testGuardianCanPauseDeposit() public {
+        bool beforeState = riskEngine.depositPaused();
+
+        riskEngine.pauseDepositing();
+
+        bool afterState = riskEngine.depositPaused();
+
+        assertFalse(beforeState);
+        assertTrue(afterState);
+    }
+
+    function testGuardianCanUnpauseDeposit() public {
+        riskEngine.pauseDepositing();
+        bool beforeState = riskEngine.depositPaused();
+
+        riskEngine.unpauseDepositing();
+        bool afterState = riskEngine.depositPaused();
+
+        assertTrue(beforeState);
+        assertFalse(afterState);
+    }
+
+    function testNonGuardianCannotPauseDeposit() public {
+        address attacker = makeAddr("Attacker");
+
+        vm.prank(attacker);
+        vm.expectRevert(RiskEngine.RiskEngine__InvalidGuardian.selector);
+
+        riskEngine.pauseDepositing();
+    }
+
+    function testNonGuardianCannotUnpauseDeposit() public {
+        riskEngine.pauseDepositing();
+
+        address attacker = makeAddr("Attacker");
+
+        vm.prank(attacker);
+        vm.expectRevert(RiskEngine.RiskEngine__InvalidGuardian.selector);
+
+        riskEngine.unpauseDepositing();
+    }
+
+    ////////////////////////////////////////////////
+    ///// LIQUIDATION PAUSE & UNPAUSE TESTS /////
+    //////////////////////////////////////////////
+
+    function testGuardianCanPauseLiquidation() public {
+        bool beforeState = riskEngine.liquidationPaused();
+
+        riskEngine.pauseLiquidation();
+
+        bool afterState = riskEngine.liquidationPaused();
+
+        assertFalse(beforeState);
+        assertTrue(afterState);
+    }
+
+    function testGuardianCanUnpauseLiquidation() public {
+        riskEngine.pauseLiquidation();
+        bool beforeState = riskEngine.liquidationPaused();
+
+        riskEngine.unpauseLiquidation();
+        bool afterState = riskEngine.liquidationPaused();
+
+        assertTrue(beforeState);
+        assertFalse(afterState);
+    }
+
+    function testNonGuardianCannotPauseLiquidation() public {
+        address attacker = makeAddr("Attacker");
+
+        vm.prank(attacker);
+        vm.expectRevert(RiskEngine.RiskEngine__InvalidGuardian.selector);
+
+        riskEngine.pauseLiquidation();
+    }
+
+    function testNonGuardianCannotUnpauseLiquidation() public {
+        riskEngine.pauseLiquidation();
+
+        address attacker = makeAddr("Attacker");
+
+        vm.prank(attacker);
+
+        vm.expectRevert(RiskEngine.RiskEngine__InvalidGuardian.selector);
+        riskEngine.unpauseLiquidation();
+    }
+
+    //////////////////////////
+    ////// OWNER TESTS /////
+    //////////////////////////
 
     /////////////////////////
     ///// PAUSE TESTS /////
