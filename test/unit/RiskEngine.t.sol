@@ -54,11 +54,9 @@ contract RiskEngineTest is RiskTestBase {
         uint256 collateralUsd = 100 ether;
         uint256 debtUsd = 30 ether;
 
-        uint256 expectedCollateral = (collateralUsd *
-            riskEngine.liquidationThreshold()) /
-            riskEngine.LIQUIDATION_PRECISION();
-        uint256 expectedHF = (expectedCollateral * riskEngine.PRECISION()) /
-            debtUsd;
+        uint256 expectedCollateral =
+            (collateralUsd * riskEngine.liquidationThreshold()) / riskEngine.LIQUIDATION_PRECISION();
+        uint256 expectedHF = (expectedCollateral * riskEngine.PRECISION()) / debtUsd;
 
         uint256 HF = riskEngine.healthFactor(collateralUsd, debtUsd);
         assertEq(HF, expectedHF);
@@ -136,10 +134,7 @@ contract RiskEngineTest is RiskTestBase {
         uint256 remainingCollateralUsd = 90 ether;
         uint256 debtUsd = 40 ether;
 
-        bool canWithdraw = riskEngine.canWithdraw(
-            remainingCollateralUsd,
-            debtUsd
-        );
+        bool canWithdraw = riskEngine.canWithdraw(remainingCollateralUsd, debtUsd);
 
         assertTrue(canWithdraw);
     }
@@ -148,10 +143,7 @@ contract RiskEngineTest is RiskTestBase {
         uint256 remainingCollateralUsd = 70 ether;
         uint256 debtUsd = 40 ether;
 
-        bool canWithdraw = riskEngine.canWithdraw(
-            remainingCollateralUsd,
-            debtUsd
-        );
+        bool canWithdraw = riskEngine.canWithdraw(remainingCollateralUsd, debtUsd);
 
         assertFalse(canWithdraw);
     }
@@ -160,10 +152,7 @@ contract RiskEngineTest is RiskTestBase {
         uint256 remainingCollateralUsd = 100 ether;
         uint256 debtUsd = 50 ether;
 
-        bool canWithdraw = riskEngine.canWithdraw(
-            remainingCollateralUsd,
-            debtUsd
-        );
+        bool canWithdraw = riskEngine.canWithdraw(remainingCollateralUsd, debtUsd);
 
         assertTrue(canWithdraw);
     }
@@ -201,12 +190,9 @@ contract RiskEngineTest is RiskTestBase {
 
     function testCalculateSeizedCollateral() public view {
         uint256 repayAmount = 10 ether;
-        uint256 expectedSeized = repayAmount +
-            ((repayAmount * riskEngine.liquidationBonus())) /
-            riskEngine.LIQUIDATION_PRECISION();
-        uint256 seizedCollateral = riskEngine.calculateSeizedCollateral(
-            repayAmount
-        );
+        uint256 expectedSeized =
+            repayAmount + ((repayAmount * riskEngine.liquidationBonus())) / riskEngine.LIQUIDATION_PRECISION();
+        uint256 seizedCollateral = riskEngine.calculateSeizedCollateral(repayAmount);
 
         assertEq(seizedCollateral, expectedSeized);
     }
@@ -245,6 +231,8 @@ contract RiskEngineTest is RiskTestBase {
     function testCanBorrowAboveCap() public view {
         uint256 borrowCap = riskEngine.borrowCap() + 100 ether;
         bool canBorrow = riskEngine.canGlobalBorrow(0, borrowCap);
+
+        console.log("Borrow Cap: ", borrowCap);
 
         assertFalse(canBorrow);
     }
