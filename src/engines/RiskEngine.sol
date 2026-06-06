@@ -19,6 +19,8 @@ contract RiskEngine {
     error RiskEngine__LiquidationPaused();
     error RiskEngine__DepositPaused();
     error RiskEngine__InvalidCaps();
+    error RiskEngine__AlreadyPaused();
+    error RiskEngine__AlreadyUnpaused();
 
     //////////////////
     //// EVENTS ////
@@ -104,7 +106,7 @@ contract RiskEngine {
         borrowCap = _borrowCap;
     }
 
-    // V1 assumes debt asset and collateral asset are same asset (ETH)
+    // V3 assumes debt asset and collateral asset are same asset (ETH)
     // Multi-asset version must convert through oracle prices
 
     /////////////////////////////
@@ -170,36 +172,48 @@ contract RiskEngine {
     /////////////////////////////////////
 
     function pauseBorrowing() external onlyGuardian {
+        if (borrowPaused) revert RiskEngine__AlreadyPaused();
+
         borrowPaused = true;
 
         emit BorrowPaused();
     }
 
     function unpauseBorrowing() external onlyGuardian {
+        if (!borrowPaused) revert RiskEngine__AlreadyUnpaused();
+
         borrowPaused = false;
 
         emit BorrowUnpaused();
     }
 
     function pauseLiquidation() external onlyGuardian {
+        if (liquidationPaused) revert RiskEngine__AlreadyPaused();
+
         liquidationPaused = true;
 
         emit LiquidationPaused();
     }
 
     function unpauseLiquidation() external onlyGuardian {
+        if (!liquidationPaused) revert RiskEngine__AlreadyUnpaused();
+
         liquidationPaused = false;
 
         emit LiquidationUnpaused();
     }
 
     function pauseDepositing() external onlyGuardian {
+        if (depositPaused) revert RiskEngine__AlreadyPaused();
+
         depositPaused = true;
 
         emit DepositPaused();
     }
 
     function unpauseDepositing() external onlyGuardian {
+        if (!depositPaused) revert RiskEngine__AlreadyUnpaused();
+
         depositPaused = false;
 
         emit DepositUnpaused();
@@ -266,7 +280,11 @@ contract RiskEngine {
     }
 
     function updateSupplyCap(uint256 newCap) external onlyOwner {
-        if (newCap > supplyCap) revert RiskEngine__InvalidCaps();
+        if (newCap == 0) revert RiskEngine__InvalidCaps();
+
+        if (newCap < borrowCap) {
+            revert RiskEngine__InvalidCaps();
+        }
 
         uint256 oldCap = supplyCap;
         supplyCap = newCap;
@@ -275,7 +293,11 @@ contract RiskEngine {
     }
 
     function updateBorrowCap(uint256 newCap) external onlyOwner {
-        if (newCap > borrowCap) revert RiskEngine__InvalidCaps();
+        if (newCap == 0) revert RiskEngine__InvalidCaps();
+
+        if (newCap > supplyCap) {
+            revert RiskEngine__InvalidCaps();
+        }
 
         uint256 oldCap = borrowCap;
         borrowCap = newCap;
