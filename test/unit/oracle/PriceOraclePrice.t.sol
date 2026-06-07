@@ -2,13 +2,42 @@
 pragma solidity ^0.8.20;
 
 import {OracleTestBase} from "../../utils/OracleTestBase.t.sol";
+import {PriceOracle} from "../../../src/oracle/PriceOracle.sol";
 
 contract PriceOraclePriceTest is OracleTestBase {
-    function testGetPriceReturnsCorrectPrice() public {}
+    function testGetPriceReturnsCorrectPrice() public view {
+        uint256 actualPrice = oracle.getPrice();
 
-    function testGetPriceRevertsIfPriceZero() public {}
+        uint256 expectedPrice = 2000e8;
 
-    function testGetPriceRevertsIfPriceNegative() public {}
+        assertEq(actualPrice, expectedPrice);
+    }
 
-    function testGetPriceRevertsIfStale() public {}
+    function testGetPriceRevertsIfPriceZero() public {
+        int256 newPrice = 0;
+
+        _updatePrice(newPrice);
+
+        vm.expectRevert(PriceOracle.PriceOracle__InvalidPrice.selector);
+
+        oracle.getPrice();
+    }
+
+    function testGetPriceRevertsIfPriceNegative() public {
+        int256 newPrice = -2000e18;
+
+        _updatePrice(newPrice);
+
+        vm.expectRevert(PriceOracle.PriceOracle__InvalidPrice.selector);
+
+        oracle.getPrice();
+    }
+
+    function testGetPriceRevertsIfStale() public {
+        _warpPastStaleTime();
+
+        vm.expectRevert(PriceOracle.PriceOracle__StalePrice.selector);
+
+        oracle.getPrice();
+    }
 }
