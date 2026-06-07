@@ -11,6 +11,7 @@ abstract contract OracleTestBase is Test {
 
     address internal owner = address(this);
     address internal constant USER = address(1);
+    address internal constant ATTACKER = address(999);
 
     uint8 internal constant FEED_DECIMALS = 8;
     int256 internal constant ETH_PRICE = 2000e8;
@@ -18,7 +19,6 @@ abstract contract OracleTestBase is Test {
 
     function setUp() public virtual {
         mockFeed = new MockV3Aggregator(FEED_DECIMALS, ETH_PRICE);
-
         oracle = new PriceOracle(address(mockFeed));
     }
 
@@ -28,6 +28,10 @@ abstract contract OracleTestBase is Test {
 
     function _deployMockFeed(int256 initialPrice) internal returns (MockV3Aggregator) {
         return new MockV3Aggregator(FEED_DECIMALS, initialPrice);
+    }
+
+    function _deployOracle(address feed) internal returns (PriceOracle) {
+        return new PriceOracle(feed);
     }
 
     function _updatePrice(int256 newPrice) internal {
@@ -52,6 +56,11 @@ abstract contract OracleTestBase is Test {
 
     function _replaceFeed(address newFeed) internal {
         oracle.setPriceFeed(newFeed);
+    }
+
+    function _deployAndReplaceFeed(int256 price) internal returns (MockV3Aggregator newFeed) {
+        newFeed = new MockV3Aggregator(FEED_DECIMALS, price);
+        oracle.setPriceFeed(address(newFeed));
     }
 
     function _warpPastStaleTime() internal {
