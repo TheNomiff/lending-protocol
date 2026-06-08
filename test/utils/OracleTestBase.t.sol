@@ -14,11 +14,11 @@ abstract contract OracleTestBase is Test {
     address internal constant ATTACKER = address(999);
 
     uint8 internal constant FEED_DECIMALS = 8;
-    int256 internal constant ETH_PRICE = 2000e8;
+    uint256 internal constant ETH_PRICE = 2000e8;
     uint256 internal constant DEFAULT_STALE_TIME = 1 hours;
 
     function setUp() public virtual {
-        mockFeed = new MockV3Aggregator(FEED_DECIMALS, ETH_PRICE);
+        mockFeed = new MockV3Aggregator(FEED_DECIMALS, int256(ETH_PRICE));
         oracle = new PriceOracle(address(mockFeed));
     }
 
