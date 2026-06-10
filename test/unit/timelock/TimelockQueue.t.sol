@@ -2,45 +2,94 @@
 pragma solidity ^0.8.20;
 
 import {TimelockTestBase} from "../../utils/TimelockTestBase.t.sol";
+import {MockTarget} from "../../utils/TimelockTestBase.t.sol";
+import {Timelock} from "../../../src/governance/Timelock.sol";
 
 contract TimelockQueueTest is TimelockTestBase {
     function testOwnerCanQueueTransaction() public {
-        // Verifies that the owner can successfully queue a transaction and receive a valid txId.
+        uint256 txId = _queueSetValue(100);
+
+        assertEq(txId, 1);
     }
 
     function testQueueIncrementsTxCount() public {
-        // Verifies that queueTransaction increments txCount by one per queued transaction.
+        assertEq(timelock.txCount(), 0);
+
+        _queueSetValue(100);
+
+        assertEq(timelock.txCount(), 1);
     }
 
     function testQueueReturnsSequentialTxIds() public {
-        // Verifies that successive queue calls return incrementing txIds (1, 2, 3, ...).
+        uint256 txId1 = _queueSetValue(100);
+        uint256 txId2 = _queueSetValue(20);
+        uint256 txId3 = _queueSetValue(200);
+
+        assertEq(txId1, 1);
+        assertEq(txId2, 2);
+        assertEq(txId3, 3);
     }
 
     function testQueueStoresCorrectTarget() public {
-        // Verifies that the queued transaction stores the provided target address.
+        uint256 txId = _queueSetValue(300);
+
+        (address target,,,) = timelock.queuedTransactions(txId);
+
+        assertEq(target, address(mockTarget));
     }
 
     function testQueueStoresCorrectData() public {
-        // Verifies that the queued transaction stores the provided calldata unchanged.
+        bytes memory expectedData = abi.encodeCall(MockTarget.setValue, (50));
+
+        uint256 txId = _queueSetValue(50);
+
+        (, bytes memory storedData,,) = timelock.queuedTransactions(txId);
+
+        assertEq(storedData, expectedData);
     }
 
     function testQueueSetsExecuteAfterToDelayFromNow() public {
-        // Verifies that executeAfter is set to block.timestamp + DELAY at queue time.
+        uint256 expectedTime = block.timestamp + timelock.DELAY();
+
+        uint256 txId = _queueSetValue(10);
+
+        (,, uint256 executeAfter,) = timelock.queuedTransactions(txId);
+
+        assertEq(expectedTime, executeAfter);
     }
 
     function testQueueSetsExecutedToFalse() public {
-        // Verifies that newly queued transactions have executed flag set to false.
+        uint256 txId = _queueSetValue(500);
+
+        (,,, bool executed) = timelock.queuedTransactions(txId);
+
+        assertFalse(executed);
     }
 
     function testQueueEmitsTransactionQueued() public {
-        // Verifies that queueTransaction emits TransactionQueued with correct indexed txId, target, data, and executeAfter.
+        uint256 expectedExecuteAfter = block.timestamp + timelock.DELAY();
+        bytes memory data = abi.encodeCall(MockTarget.setValue, (1100));
+
+        vm.expectEmit();
+
+        emit Timelock.TransactionQueued(1, address(mockTarget), data, expectedExecuteAfter);
+
+        timelock.queueTransaction(address(mockTarget), data);
     }
 
     function testQueueRevertsIfTargetZero() public {
-        // Verifies that queueTransaction reverts with Timelock__InvalidTarget when target is address(0).
+        bytes memory data = abi.encodeCall(MockTarget.setValue, (100));
+
+        vm.expectRevert(Timelock.Timelock__InvalidTarget.selector);
+        timelock.queueTransaction(address(0), data);
     }
 
     function testNonOwnerCannotQueueTransaction() public {
-        // Verifies that a non-owner caller cannot queue a transaction and reverts with Timelock__NotOwner.
+        bytes memory data = abi.encodeCall(MockTarget.setValue, (100));
+
+        vm.prank(NON_OWNER);
+        vm.expectRevert(Timelock.Timelock__NotOwner.selector);
+
+        timelock.queueTransaction(address(mockTarget), data);
     }
 }
