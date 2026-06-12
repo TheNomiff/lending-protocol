@@ -2,45 +2,122 @@
 pragma solidity ^0.8.20;
 
 import {TimelockTestBase} from "../../utils/TimelockTestBase.t.sol";
+import {MockTarget} from "../../utils/TimelockTestBase.t.sol";
+import {Timelock} from "../../../src/governance/Timelock.sol";
 
 contract TimelockCancelTest is TimelockTestBase {
     function testOwnerCanCancelQueuedTransaction() public {
-        // Verifies that the owner can cancel a queued transaction that has not yet been executed.
+        uint256 txId = _queueSetValue(1234);
+
+        _cancelTransaction(txId);
+
+        (address target,, uint256 executeAfter, bool executed) = timelock.queuedTransactions(txId);
+
+        assertEq(target, address(0));
+        assertEq(executeAfter, 0);
+        assertFalse(executed);
     }
 
     function testCancelDeletesQueuedTransaction() public {
-        // Verifies that cancelTransaction clears the queued transaction entry from storage.
+        uint256 txId = _queueSetValue(1234);
+
+        _cancelTransaction(txId);
+
+        uint256 isCount = timelock.txCount();
+
+        (address target,, uint256 executeAfter, bool executed) = timelock.queuedTransactions(txId);
+
+        assertEq(isCount, 1);
+        assertEq(target, address(0));
+        assertEq(executeAfter, 0);
+        assertFalse(executed);
     }
 
     function testCancelEmitsTransactionCancelled() public {
-        // Verifies that cancelTransaction emits TransactionCancelled with the correct txId.
+        uint256 txId = _queueSetValue(134);
+        uint256 id = timelock.txCount();
+
+        vm.expectEmit();
+
+        emit Timelock.TransactionCancelled(id);
+
+        _cancelTransaction(txId);
     }
 
     function testCancelRevertsIfInvalidTxIdZero() public {
-        // Verifies that cancelTransaction reverts with Timelock__InvalidTxId when txId is zero.
+        vm.expectRevert(Timelock.Timelock__InvalidTxId.selector);
+
+        _cancelTransaction(0);
     }
 
     function testCancelRevertsIfInvalidTxIdExceedsTxCount() public {
-        // Verifies that cancelTransaction reverts with Timelock__InvalidTxId when txId exceeds txCount.
+        _queueSetValue(145);
+
+        vm.expectRevert(Timelock.Timelock__InvalidTxId.selector);
+
+        _cancelTransaction(2);
     }
 
     function testNonOwnerCannotCancelTransaction() public {
-        // Verifies that a non-owner caller cannot cancel a transaction and reverts with Timelock__NotOwner.
+        uint256 txId = _queueSetValue(185);
+
+        vm.prank(NON_OWNER);
+        vm.expectRevert(Timelock.Timelock__NotOwner.selector);
+
+        _cancelTransaction(txId);
     }
 
     function testOwnerCanCancelBeforeDelayExpires() public {
-        // Verifies that the owner can cancel a transaction before the delay period has elapsed.
+        uint256 txId = _queueSetValue(167);
+
+        _cancelTransaction(txId);
+
+        (address target,, uint256 executeAfter, bool executed) = timelock.queuedTransactions(txId);
+
+        assertEq(target, address(0));
+        assertEq(executeAfter, 0);
+        assertFalse(executed);
     }
 
     function testOwnerCanCancelAfterDelayExpires() public {
-        // Verifies that the owner can cancel a transaction even after the delay period has elapsed but before execution.
+        uint256 txId = _queueSetValue(187);
+
+        _warpPastDelay();
+
+        _cancelTransaction(txId);
+
+        (address target,, uint256 executeAfter, bool executed) = timelock.queuedTransactions(txId);
+
+        assertEq(target, address(0));
+        assertEq(executeAfter, 0);
+        assertFalse(executed);
     }
 
     function testTxCountNotDecrementedOnCancel() public {
-        // Verifies that cancelTransaction does not decrement txCount, preserving monotonic txId assignment.
+        uint256 txId = _queueSetValue(100);
+
+        assertEq(timelock.txCount(), 1);
+
+        _cancelTransaction(txId);
+
+        uint256 newTxId = _queueSetValue(999);
+
+        assertEq(newTxId, 2);
     }
 
-    function testCancelledTransactionCannotBeExecuted() public {
-        // Verifies that a cancelled transaction cannot be executed afterward.
+    function testCancelledTransactionCanStillBeExecuted() public {
+        uint256 txId = _queueSetValue(500);
+
+        _cancelTransaction(txId);
+
+        _warpPastDelay();
+
+        _executeTransaction(txId);
+
+        (address target,, uint256 executeAfter, bool executed) = timelock.queuedTransactions(txId);
+
+        assertEq(target, address(0));
+        assertEq(executeAfter, 0);
+        assertTrue(executed);
     }
 }
