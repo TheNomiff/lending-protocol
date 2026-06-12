@@ -2,29 +2,64 @@
 pragma solidity ^0.8.20;
 
 import {TimelockTestBase} from "../../utils/TimelockTestBase.t.sol";
+import {Timelock} from "../../../src/governance/Timelock.sol";
 
 contract TimelockOwnershipTest is TimelockTestBase {
     function testOwnerCanQueueTransaction() public {
-        // Verifies that the deployer (owner) has permission to call queueTransaction.
+        uint256 txId = _queueSetValue(232);
+
+        assertEq(txId, 1);
     }
 
     function testOwnerCanExecuteTransaction() public {
-        // Verifies that the deployer (owner) has permission to call executeTransaction after the delay.
+        uint256 txId = _queueSetValue(232);
+
+        _warpPastDelay();
+
+        _executeTransaction(txId);
+
+        (address target,,, bool executed) = timelock.queuedTransactions(txId);
+
+        assertEq(target, address(mockTarget));
+        assertTrue(executed);
+        assertEq(mockTarget.value(), 232);
     }
 
     function testOwnerCanCancelTransaction() public {
-        // Verifies that the deployer (owner) has permission to call cancelTransaction.
+        uint256 txId = _queueSetValue(432);
+
+        _cancelTransaction(txId);
+
+        (address target,,, bool executed) = timelock.queuedTransactions(txId);
+
+        assertEq(target, address(0));
+        assertFalse(executed);
     }
 
     function testNonOwnerCannotQueueTransaction() public {
-        // Verifies that onlyOwner blocks non-owner callers on queueTransaction with Timelock__NotOwner.
+        vm.prank(NON_OWNER);
+        vm.expectRevert(Timelock.Timelock__NotOwner.selector);
+
+        _queueSetValue(312);
     }
 
     function testNonOwnerCannotExecuteTransaction() public {
-        // Verifies that onlyOwner blocks non-owner callers on executeTransaction with Timelock__NotOwner.
+        uint256 txId = _queueSetValue(3112);
+
+        _warpPastDelay();
+
+        vm.prank(NON_OWNER);
+        vm.expectRevert(Timelock.Timelock__NotOwner.selector);
+
+        _executeTransaction(txId);
     }
 
     function testNonOwnerCannotCancelTransaction() public {
-        // Verifies that onlyOwner blocks non-owner callers on cancelTransaction with Timelock__NotOwner.
+        uint256 txId = _queueSetValue(332);
+
+        vm.prank(NON_OWNER);
+        vm.expectRevert(Timelock.Timelock__NotOwner.selector);
+
+        _cancelTransaction(txId);
     }
 }
