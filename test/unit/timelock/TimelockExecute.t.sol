@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import {TimelockTestBase} from "../../utils/TimelockTestBase.t.sol";
 import {MockTarget} from "../../utils/TimelockTestBase.t.sol";
 import {Timelock} from "../../../src/governance/Timelock.sol";
-import {console2} from "forge-std/console2.sol";
 
 contract TimelockExecuteTest is TimelockTestBase {
     function testOwnerCanExecuteAfterDelay() public {
