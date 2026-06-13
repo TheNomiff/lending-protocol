@@ -21,6 +21,7 @@ contract RiskEngine {
     error RiskEngine__InvalidCaps();
     error RiskEngine__AlreadyPaused();
     error RiskEngine__AlreadyUnpaused();
+    error RiskEngine__ValueUnchanged();
 
     //////////////////
     //// EVENTS ////
@@ -228,6 +229,9 @@ contract RiskEngine {
         if (newRatio >= liquidationThreshold) {
             revert RiskEngine__InvalidRiskParameters();
         }
+        if (newRatio == maxBorrowRatio) {
+            revert RiskEngine__ValueUnchanged();
+        }
 
         uint256 oldRatio = maxBorrowRatio;
         maxBorrowRatio = newRatio;
@@ -242,6 +246,9 @@ contract RiskEngine {
         if (newThreshold <= maxBorrowRatio) {
             revert RiskEngine__InvalidRiskParameters();
         }
+        if (newThreshold == liquidationThreshold) {
+            revert RiskEngine__ValueUnchanged();
+        }
 
         uint256 oldThreshold = liquidationThreshold;
         liquidationThreshold = newThreshold;
@@ -252,6 +259,9 @@ contract RiskEngine {
     function updateCloseFactor(uint256 newFactor) external onlyOwner {
         if (newFactor == 0 || newFactor > 100) {
             revert RiskEngine__InvalidCloseFactor();
+        }
+        if (newFactor == closeFactor) {
+            revert RiskEngine__ValueUnchanged();
         }
 
         uint256 oldFactor = closeFactor;
@@ -264,6 +274,9 @@ contract RiskEngine {
         if (newHF == 0 || newHF < 1e18) {
             revert RiskEngine__InvalidHealthFactor();
         }
+        if (newHF == minHealthFactor) {
+            revert RiskEngine__ValueUnchanged();
+        }
 
         uint256 oldHF = minHealthFactor;
         minHealthFactor = newHF;
@@ -273,6 +286,10 @@ contract RiskEngine {
 
     function updateLiquidationBonus(uint256 newBonus) external onlyOwner {
         if (newBonus == 0 || newBonus > 100) revert RiskEngine__InvalidBonus();
+        if (newBonus == liquidationBonus) {
+            revert RiskEngine__ValueUnchanged();
+        }
+
         uint256 oldBonus = liquidationBonus;
         liquidationBonus = newBonus;
 
@@ -281,9 +298,9 @@ contract RiskEngine {
 
     function updateSupplyCap(uint256 newCap) external onlyOwner {
         if (newCap == 0) revert RiskEngine__InvalidCaps();
-
-        if (newCap < borrowCap) {
-            revert RiskEngine__InvalidCaps();
+        if (newCap < borrowCap) revert RiskEngine__InvalidCaps();
+        if (newCap == supplyCap) {
+            revert RiskEngine__ValueUnchanged();
         }
 
         uint256 oldCap = supplyCap;
@@ -294,9 +311,9 @@ contract RiskEngine {
 
     function updateBorrowCap(uint256 newCap) external onlyOwner {
         if (newCap == 0) revert RiskEngine__InvalidCaps();
-
-        if (newCap > supplyCap) {
-            revert RiskEngine__InvalidCaps();
+        if (newCap > supplyCap) revert RiskEngine__InvalidCaps();
+        if (newCap == borrowCap) {
+            revert RiskEngine__ValueUnchanged();
         }
 
         uint256 oldCap = borrowCap;
