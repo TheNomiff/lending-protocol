@@ -112,12 +112,8 @@ contract TimelockCancelTest is TimelockTestBase {
 
         _warpPastDelay();
 
+        vm.expectRevert(Timelock.Timelock__CancelledTransaction.selector);
+
         _executeTransaction(txId);
-
-        (address target,, uint256 executeAfter, bool executed) = timelock.queuedTransactions(txId);
-
-        assertEq(target, address(0));
-        assertEq(executeAfter, 0);
-        assertTrue(executed);
     }
 }
