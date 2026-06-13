@@ -12,6 +12,7 @@ contract Timelock {
     error Timelock__InvalidTxId();
     error Timelock__InvalidTarget();
     error Timelock__ExecutionFailed();
+    error Timelock__CancelledTransaction();
 
     //////////////////
     //// EVENTS ////
@@ -102,6 +103,10 @@ contract Timelock {
 
         if (block.timestamp < txData.executeAfter) revert Timelock__TooEarly();
 
+        if (txData.target == address(0)) {
+            revert Timelock__CancelledTransaction();
+        }
+
         txData.executed = true;
 
         (bool success,) = txData.target.call(txData.data);
@@ -112,8 +117,18 @@ contract Timelock {
     }
 
     function cancelTransaction(uint256 txId) external onlyOwner {
+        Queue storage txData = queuedTransactions[txId];
+
         if (txId == 0 || txId > txCount) {
             revert Timelock__InvalidTxId();
+        }
+
+        if (txData.executed) {
+            revert Timelock__AlreadyExecuted();
+        }
+
+        if (txData.target == address(0)) {
+            revert Timelock__CancelledTransaction();
         }
 
         emit TransactionCancelled(txId);
