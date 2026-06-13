@@ -84,4 +84,16 @@ contract RiskEngineCapsTest is RiskTestBase {
 
         riskEngine.updateBorrowCap(newCap);
     }
+
+    function testUpdateSupplyCapRevertsIfBelowBorrowCap() public {
+        vm.expectRevert(RiskEngine.RiskEngine__InvalidCaps.selector);
+
+        riskEngine.updateSupplyCap(400 ether);
+    }
+
+    function testUpdateBorrowCapRevertsIfAboveSupplyCap() public {
+        vm.expectRevert(RiskEngine.RiskEngine__InvalidCaps.selector);
+
+        riskEngine.updateBorrowCap(2000 ether);
+    }
 }

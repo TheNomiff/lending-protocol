@@ -34,4 +34,10 @@ contract RiskEngineGuardianTest is RiskTestBase {
         riskEngine.pauseBorrowing();
         assertTrue(riskEngine.borrowPaused());
     }
+
+    function testTransferGuardianToZeroAddressReverts() public {
+        vm.expectRevert(RiskEngine.RiskEngine__InvalidGuardian.selector);
+
+        riskEngine.transferGuardian(address(0));
+    }
 }

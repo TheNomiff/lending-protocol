@@ -17,27 +17,4 @@ abstract contract RiskTestBase is Test {
     function setUp() public virtual {
         riskEngine = new RiskEngine(SUPPLY_CAP, BORROW_CAP);
     }
-
-    //////////////////////////////////
-    ////// HELPER FUNCTIONS /////////
-    //////////////////////////////////
-
-    function _setGuardian() internal {
-        riskEngine.transferGuardian(GUARDIAN);
-    }
-
-    function _pauseBorrowing() internal {
-        vm.prank(GUARDIAN);
-        riskEngine.pauseBorrowing();
-    }
-
-    function _pauseLiquidation() internal {
-        vm.prank(GUARDIAN);
-        riskEngine.pauseLiquidation();
-    }
-
-    function _pauseDepositing() internal {
-        vm.prank(GUARDIAN);
-        riskEngine.pauseDepositing();
-    }
 }

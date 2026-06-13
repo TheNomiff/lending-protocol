@@ -163,4 +163,80 @@ contract RiskEngineParametersTest is RiskTestBase {
 
         riskEngine.updateLiquidationBonus(newBonus);
     }
+
+    function testUpdateMaxBorrowRatioRevertsIfAboveOrEqualThreshold() public {
+        vm.expectRevert(RiskEngine.RiskEngine__InvalidRiskParameters.selector);
+
+        riskEngine.updateMaxBorrowRatio(80);
+    }
+
+    function testUpdateThresholdRevertsIfBelowOrEqualMaxBorrowRatio() public {
+        vm.expectRevert(RiskEngine.RiskEngine__ValueUnchanged.selector);
+
+        riskEngine.updateLiquidationThreshold(75);
+    }
+
+    function testUpdateThresholdRevertsIfBelowMaxBorrowRatio() public {
+        uint256 currentMaxBorrowRatio = riskEngine.maxBorrowRatio();
+
+        vm.expectRevert(RiskEngine.RiskEngine__InvalidRiskParameters.selector);
+
+        riskEngine.updateLiquidationThreshold(currentMaxBorrowRatio - 1);
+    }
+
+    function testUpdateMaxBorrowRatioRevertsIfValueUnchanged() public {
+        uint256 current = riskEngine.maxBorrowRatio();
+
+        vm.expectRevert(RiskEngine.RiskEngine__ValueUnchanged.selector);
+
+        riskEngine.updateMaxBorrowRatio(current);
+    }
+
+    function testUpdateThresholdRevertsIfValueUnchanged() public {
+        uint256 current = riskEngine.liquidationThreshold();
+
+        vm.expectRevert(RiskEngine.RiskEngine__ValueUnchanged.selector);
+
+        riskEngine.updateLiquidationThreshold(current);
+    }
+
+    function testUpdateCloseFactorRevertsIfValueUnchanged() public {
+        uint256 current = riskEngine.closeFactor();
+
+        vm.expectRevert(RiskEngine.RiskEngine__ValueUnchanged.selector);
+
+        riskEngine.updateCloseFactor(current);
+    }
+
+    function testUpdateHealthFactorRevertsIfValueUnchanged() public {
+        uint256 current = riskEngine.minHealthFactor();
+
+        vm.expectRevert(RiskEngine.RiskEngine__ValueUnchanged.selector);
+
+        riskEngine.updateMinimumHealthFactor(current);
+    }
+
+    function testUpdateBonusRevertsIfValueUnchanged() public {
+        uint256 current = riskEngine.liquidationBonus();
+
+        vm.expectRevert(RiskEngine.RiskEngine__ValueUnchanged.selector);
+
+        riskEngine.updateLiquidationBonus(current);
+    }
+
+    function testUpdateSupplyCapRevertsIfValueUnchanged() public {
+        uint256 current = riskEngine.supplyCap();
+
+        vm.expectRevert(RiskEngine.RiskEngine__ValueUnchanged.selector);
+
+        riskEngine.updateSupplyCap(current);
+    }
+
+    function testUpdateBorrowCapRevertsIfValueUnchanged() public {
+        uint256 current = riskEngine.borrowCap();
+
+        vm.expectRevert(RiskEngine.RiskEngine__ValueUnchanged.selector);
+
+        riskEngine.updateBorrowCap(current);
+    }
 }
