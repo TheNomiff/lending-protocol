@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {RiskEngine} from "../../../src/engines/RiskEngine.sol";
 import {RiskTestBase} from "../../utils/RiskTestBase.t.sol";
+import {LiquidationEngine} from "../../../src/engines/LiquidationEngine.sol";
 
 contract RiskEngineOwnershipTest is RiskTestBase {
     function testOwnerCanTransferOwnership() public {
@@ -42,14 +43,14 @@ contract RiskEngineOwnershipTest is RiskTestBase {
         address newOwner = makeAddr("New Owner");
         uint256 newBonus = 15;
 
-        riskEngine.transferOwnership(newOwner);
+        liquidationEngine.transferOwnership(newOwner);
 
         vm.prank(oldOwner);
-        vm.expectRevert(RiskEngine.RiskEngine__NotOwner.selector);
+        vm.expectRevert(LiquidationEngine.LiquidationEngine__NotOwner.selector);
 
-        riskEngine.updateLiquidationBonus(newBonus);
+        liquidationEngine.updateLiquidationBonus(newBonus);
 
-        assertEq(riskEngine.owner(), newOwner);
+        assertEq(liquidationEngine.owner(), newOwner);
     }
 
     function testTransferOwnershipToZeroAddressReverts() public {

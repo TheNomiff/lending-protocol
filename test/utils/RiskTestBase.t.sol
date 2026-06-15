@@ -3,9 +3,11 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {RiskEngine} from "../../src/engines/RiskEngine.sol";
+import {LiquidationEngine} from "../../src/engines/LiquidationEngine.sol";
 
 abstract contract RiskTestBase is Test {
     RiskEngine internal riskEngine;
+    LiquidationEngine internal liquidationEngine;
 
     address internal owner = address(this);
     address internal constant GUARDIAN = address(100);
@@ -16,5 +18,6 @@ abstract contract RiskTestBase is Test {
 
     function setUp() public virtual {
         riskEngine = new RiskEngine(SUPPLY_CAP, BORROW_CAP);
+        liquidationEngine = new LiquidationEngine();
     }
 }

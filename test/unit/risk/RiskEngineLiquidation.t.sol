@@ -26,7 +26,7 @@ contract RiskEngineLiquidationTest is RiskTestBase {
 
     function testCalculateMaxLiquidation() public view {
         uint256 debtUsd = 40 ether;
-        uint256 maxLiquidation = riskEngine.calculateMaxLiquidation(debtUsd);
+        uint256 maxLiquidation = liquidationEngine.calculateMaxLiquidation(debtUsd);
 
         assertEq(maxLiquidation, 20 ether);
     }
@@ -34,8 +34,8 @@ contract RiskEngineLiquidationTest is RiskTestBase {
     function testCalculateSeizedCollateral() public view {
         uint256 repayAmount = 10 ether;
         uint256 expectedSeized =
-            repayAmount + ((repayAmount * riskEngine.liquidationBonus()) / riskEngine.LIQUIDATION_PRECISION());
-        uint256 seizedCollateral = riskEngine.calculateSeizedCollateral(repayAmount);
+            repayAmount + ((repayAmount * liquidationEngine.liquidationBonus()) / riskEngine.LIQUIDATION_PRECISION());
+        uint256 seizedCollateral = liquidationEngine.calculateSeizedCollateral(repayAmount);
 
         assertEq(seizedCollateral, expectedSeized);
     }

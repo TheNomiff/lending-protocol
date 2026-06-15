@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {RiskEngine} from "../../../src/engines/RiskEngine.sol";
 import {RiskTestBase} from "../../utils/RiskTestBase.t.sol";
+import {LiquidationEngine} from "../../../src/engines/LiquidationEngine.sol";
 
 contract RiskEngineParametersTest is RiskTestBase {
     function testUpdateMaxBorrowRatio() public {
@@ -74,25 +75,25 @@ contract RiskEngineParametersTest is RiskTestBase {
 
     function testUpdateCloseFactor() public {
         uint256 newFactor = 75;
-        riskEngine.updateCloseFactor(newFactor);
+        liquidationEngine.updateCloseFactor(newFactor);
 
-        assertEq(riskEngine.closeFactor(), newFactor);
+        assertEq(liquidationEngine.closeFactor(), newFactor);
     }
 
     function testUpdateCloseFactorRevertsIfZero() public {
         uint256 newFactor = 0;
 
-        vm.expectRevert(RiskEngine.RiskEngine__InvalidCloseFactor.selector);
+        vm.expectRevert(LiquidationEngine.LiquidationEngine__InvalidCloseFactor.selector);
 
-        riskEngine.updateCloseFactor(newFactor);
+        liquidationEngine.updateCloseFactor(newFactor);
     }
 
     function testUpdateCloseFactorRevertsIfAbove100() public {
         uint256 newFactor = 101;
 
-        vm.expectRevert(RiskEngine.RiskEngine__InvalidCloseFactor.selector);
+        vm.expectRevert(LiquidationEngine.LiquidationEngine__InvalidCloseFactor.selector);
 
-        riskEngine.updateCloseFactor(newFactor);
+        liquidationEngine.updateCloseFactor(newFactor);
     }
 
     function testNonOwnerCannotUpdateCloseFactor() public {
@@ -100,9 +101,9 @@ contract RiskEngineParametersTest is RiskTestBase {
         address attacker = makeAddr("attacker");
 
         vm.prank(attacker);
-        vm.expectRevert(RiskEngine.RiskEngine__NotOwner.selector);
+        vm.expectRevert(LiquidationEngine.LiquidationEngine__NotOwner.selector);
 
-        riskEngine.updateCloseFactor(newFactor);
+        liquidationEngine.updateCloseFactor(newFactor);
     }
 
     function testUpdateHealthFactor() public {
@@ -133,25 +134,25 @@ contract RiskEngineParametersTest is RiskTestBase {
 
     function testUpdateBonus() public {
         uint256 newBonus = 15;
-        riskEngine.updateLiquidationBonus(newBonus);
+        liquidationEngine.updateLiquidationBonus(newBonus);
 
-        assertEq(riskEngine.liquidationBonus(), newBonus);
+        assertEq(liquidationEngine.liquidationBonus(), newBonus);
     }
 
     function testUpdateBonusRevertsIfZero() public {
         uint256 newBonus = 0;
 
-        vm.expectRevert(RiskEngine.RiskEngine__InvalidBonus.selector);
+        vm.expectRevert(LiquidationEngine.LiquidationEngine__InvalidBonus.selector);
 
-        riskEngine.updateLiquidationBonus(newBonus);
+        liquidationEngine.updateLiquidationBonus(newBonus);
     }
 
     function testUpdateBonusRevertsIfAbove100() public {
         uint256 newBonus = 101;
 
-        vm.expectRevert(RiskEngine.RiskEngine__InvalidBonus.selector);
+        vm.expectRevert(LiquidationEngine.LiquidationEngine__InvalidBonus.selector);
 
-        riskEngine.updateLiquidationBonus(newBonus);
+        liquidationEngine.updateLiquidationBonus(newBonus);
     }
 
     function testNonOwnerCannotUpdateBonus() public {
@@ -159,9 +160,9 @@ contract RiskEngineParametersTest is RiskTestBase {
         address attacker = makeAddr("attacker");
 
         vm.prank(attacker);
-        vm.expectRevert(RiskEngine.RiskEngine__NotOwner.selector);
+        vm.expectRevert(LiquidationEngine.LiquidationEngine__NotOwner.selector);
 
-        riskEngine.updateLiquidationBonus(newBonus);
+        liquidationEngine.updateLiquidationBonus(newBonus);
     }
 
     function testUpdateMaxBorrowRatioRevertsIfAboveOrEqualThreshold() public {
@@ -201,11 +202,11 @@ contract RiskEngineParametersTest is RiskTestBase {
     }
 
     function testUpdateCloseFactorRevertsIfValueUnchanged() public {
-        uint256 current = riskEngine.closeFactor();
+        uint256 current = liquidationEngine.closeFactor();
 
-        vm.expectRevert(RiskEngine.RiskEngine__ValueUnchanged.selector);
+        vm.expectRevert(LiquidationEngine.LiquidationEngine__ValueUnchanged.selector);
 
-        riskEngine.updateCloseFactor(current);
+        liquidationEngine.updateCloseFactor(current);
     }
 
     function testUpdateHealthFactorRevertsIfValueUnchanged() public {
@@ -217,11 +218,11 @@ contract RiskEngineParametersTest is RiskTestBase {
     }
 
     function testUpdateBonusRevertsIfValueUnchanged() public {
-        uint256 current = riskEngine.liquidationBonus();
+        uint256 current = liquidationEngine.liquidationBonus();
 
-        vm.expectRevert(RiskEngine.RiskEngine__ValueUnchanged.selector);
+        vm.expectRevert(LiquidationEngine.LiquidationEngine__ValueUnchanged.selector);
 
-        riskEngine.updateLiquidationBonus(current);
+        liquidationEngine.updateLiquidationBonus(current);
     }
 
     function testUpdateSupplyCapRevertsIfValueUnchanged() public {
