@@ -29,9 +29,7 @@ contract RiskEngine {
 
     event MaxBorrowUpdated(uint256 oldValue, uint256 newValue);
     event ThresholdUpdated(uint256 oldValue, uint256 newValue);
-    event CloseFactorUpdated(uint256 oldValue, uint256 newValue);
     event HealthFactorUpdated(uint256 oldValue, uint256 newValue);
-    event LiquidationBonusUpdated(uint256 oldValue, uint256 newValue);
     event BorrowPaused();
     event LiquidationPaused();
     event DepositPaused();
@@ -74,8 +72,6 @@ contract RiskEngine {
     /////////////////////////
 
     uint256 public maxBorrowRatio = 50;
-    uint256 public closeFactor = 50;
-    uint256 public liquidationBonus = 10;
     uint256 public minHealthFactor = 1e18;
     uint256 public liquidationThreshold = 75;
     uint256 public supplyCap;
@@ -134,14 +130,6 @@ contract RiskEngine {
 
     function isLiquidatable(uint256 HF) external view returns (bool) {
         return HF < minHealthFactor;
-    }
-
-    function calculateMaxLiquidation(uint256 debt) external view returns (uint256) {
-        return (debt * closeFactor) / LIQUIDATION_PRECISION;
-    }
-
-    function calculateSeizedCollateral(uint256 repayAmount) external view returns (uint256) {
-        return repayAmount + ((repayAmount * liquidationBonus) / LIQUIDATION_PRECISION);
     }
 
     function canWithdraw(uint256 remainingCollateralUsd, uint256 debtUsd) external view returns (bool) {
@@ -256,20 +244,6 @@ contract RiskEngine {
         emit ThresholdUpdated(oldThreshold, newThreshold);
     }
 
-    function updateCloseFactor(uint256 newFactor) external onlyOwner {
-        if (newFactor == 0 || newFactor > 100) {
-            revert RiskEngine__InvalidCloseFactor();
-        }
-        if (newFactor == closeFactor) {
-            revert RiskEngine__ValueUnchanged();
-        }
-
-        uint256 oldFactor = closeFactor;
-        closeFactor = newFactor;
-
-        emit CloseFactorUpdated(oldFactor, newFactor);
-    }
-
     function updateMinimumHealthFactor(uint256 newHF) external onlyOwner {
         if (newHF == 0 || newHF < 1e18) {
             revert RiskEngine__InvalidHealthFactor();
@@ -282,18 +256,6 @@ contract RiskEngine {
         minHealthFactor = newHF;
 
         emit HealthFactorUpdated(oldHF, newHF);
-    }
-
-    function updateLiquidationBonus(uint256 newBonus) external onlyOwner {
-        if (newBonus == 0 || newBonus > 100) revert RiskEngine__InvalidBonus();
-        if (newBonus == liquidationBonus) {
-            revert RiskEngine__ValueUnchanged();
-        }
-
-        uint256 oldBonus = liquidationBonus;
-        liquidationBonus = newBonus;
-
-        emit LiquidationBonusUpdated(oldBonus, newBonus);
     }
 
     function updateSupplyCap(uint256 newCap) external onlyOwner {
