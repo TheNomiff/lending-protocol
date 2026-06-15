@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {PriceOracle} from "./oracle/PriceOracle.sol";
 import {RiskEngine} from "./engines/RiskEngine.sol";
+import {LiquidationEngine} from "./engines/LiquidationEngine.sol";
 
 contract Lending is ReentrancyGuard {
     ////////////////////
@@ -73,6 +74,7 @@ contract Lending is ReentrancyGuard {
     address public immutable owner;
     PriceOracle public oracle;
     RiskEngine public riskEngine;
+    LiquidationEngine public liquidationEngine;
 
     //////////////////////
     ///// MAPPINGS /////
@@ -275,7 +277,7 @@ contract Lending is ReentrancyGuard {
             user.lastBorrowTimestamp = 0;
         }
 
-        uint256 collateralToSeize = riskEngine.calculateSeizedCollateral(repayAmount); // Calculate the amount of collateral to seize from the user based on the repay amount and the liquidation bonus, which is 10% of the repay amount.
+        uint256 collateralToSeize = liquidationEngine.calculateSeizedCollateral(repayAmount); // Calculate the amount of collateral to seize from the user based on the repay amount and the liquidation bonus, which is 10% of the repay amount.
 
         if (collateralToSeize > user.deposited) {
             collateralToSeize = user.deposited;
@@ -337,7 +339,7 @@ contract Lending is ReentrancyGuard {
     }
 
     function _calculateMaxLiquidation(uint256 debt) internal view returns (uint256) {
-        return riskEngine.calculateMaxLiquidation(debt);
+        return liquidationEngine.calculateMaxLiquidation(debt);
     }
 
     ////////////////////////////////
