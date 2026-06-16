@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Lending} from "../../src/Lending.sol";
-import {LendingTestBase} from "../utils/LendingTestBase.t.sol";
+import {Lending} from "../../../src/Lending.sol";
+import {LendingTestBase} from "../../utils/LendingTestBase.t.sol";
 
 contract DepositTest is LendingTestBase {
     function testDepositSuccess() public {
