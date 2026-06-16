@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import {RiskEngine} from "./RiskEngine.sol";
+
 contract LiquidationEngine {
     //////////////////
     //// ERRORS ////
@@ -11,6 +13,7 @@ contract LiquidationEngine {
     error LiquidationEngine__InvalidCloseFactor();
     error LiquidationEngine__InvalidBonus();
     error LiquidationEngine__ValueUnchanged();
+    error LiquidationEngine__InvalidRiskEngine();
 
     //////////////////
     //// EVENTS ////
@@ -33,6 +36,7 @@ contract LiquidationEngine {
     /////////////////
 
     address public owner;
+    RiskEngine public riskEngine;
 
     /////////////////////
     //// CONSTANTS ////
@@ -47,8 +51,14 @@ contract LiquidationEngine {
     //// CONSTRUCTOR ////
     ///////////////////////
 
-    constructor() {
+    constructor(address _riskEngine) {
         owner = msg.sender;
+
+        if (_riskEngine == address(0)) {
+            revert LiquidationEngine__InvalidRiskEngine();
+        }
+
+        riskEngine = RiskEngine(_riskEngine);
     }
 
     /////////////////////////////
@@ -65,6 +75,30 @@ contract LiquidationEngine {
 
     function calculateSeizedCollateral(uint256 repayAmount) external view returns (uint256) {
         return repayAmount + ((repayAmount * liquidationBonus) / LIQUIDATION_PRECISION);
+    }
+
+    function canLiquidate(uint256 healthFactor) external view returns (bool) {
+        return riskEngine.isLiquidatable(healthFactor);
+    }
+
+    function remainingDebtAfterLiquidation(uint256 currentDebt, uint256 repaidDebt) external pure returns (uint256) {
+        if (repaidDebt >= currentDebt) {
+            return 0;
+        }
+
+        return currentDebt - repaidDebt;
+    }
+
+    function remainingCollateralAfterSeizure(uint256 collateralBefore, uint256 collateralSeized)
+        external
+        pure
+        returns (uint256)
+    {
+        if (collateralSeized >= collateralBefore) {
+            return 0;
+        }
+
+        return collateralBefore - collateralSeized;
     }
 
     /////////////////////////////
@@ -90,7 +124,9 @@ contract LiquidationEngine {
     }
 
     function updateLiquidationBonus(uint256 newBonus) external onlyOwner {
-        if (newBonus == 0 || newBonus > 100) revert LiquidationEngine__InvalidBonus();
+        if (newBonus == 0 || newBonus > 100) {
+            revert LiquidationEngine__InvalidBonus();
+        }
         if (newBonus == liquidationBonus) {
             revert LiquidationEngine__ValueUnchanged();
         }
