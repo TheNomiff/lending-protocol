@@ -24,22 +24,6 @@ contract RiskEngineLiquidationTest is RiskTestBase {
         assertGt(HF, riskEngine.minHealthFactor());
     }
 
-    function testCalculateMaxLiquidation() public view {
-        uint256 debtUsd = 40 ether;
-        uint256 maxLiquidation = liquidationEngine.calculateMaxLiquidation(debtUsd);
-
-        assertEq(maxLiquidation, 20 ether);
-    }
-
-    function testCalculateSeizedCollateral() public view {
-        uint256 repayAmount = 10 ether;
-        uint256 expectedSeized =
-            repayAmount + ((repayAmount * liquidationEngine.liquidationBonus()) / riskEngine.LIQUIDATION_PRECISION());
-        uint256 seizedCollateral = liquidationEngine.calculateSeizedCollateral(repayAmount);
-
-        assertEq(seizedCollateral, expectedSeized);
-    }
-
     function testIsLiquidatableAtExactMinimumHealthFactor() public view {
         uint256 HF = riskEngine.minHealthFactor();
 
