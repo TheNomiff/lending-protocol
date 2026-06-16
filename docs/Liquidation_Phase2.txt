@@ -1,0 +1,25 @@
+Deciding how everything will works and designing the system before writing a single line of code is the core responsibility of an engineer, I know this part can seem tedious, but the protocol's functionality is determined by the design we create - not just the coding logic. If you overlook even a single bug - perhaps because you simply didn't feel like working.
+
+That one bug could end up beign responsible for a future loss of a $million.
+
+```
+isHealthFactorImproved()
+
+remainingDebtAfterLiquidation()
+
+remainingCollateralAfterSeizure()
+```
+
+Inputs
+
+Outputs
+
+Normal Case
+
+Edge Cases
+
+Should Revert?
+
+Should Cap?
+
+Should Return 0?
