@@ -10,9 +10,7 @@ contract LiquidationEngineConstructorTest is LiquidationTestBase {
     }
 
     function testConstructorRevertsIfRiskEngineZeroAddress() public {
-        vm.expectRevert(
-            LiquidationEngine.LiquidationEngine__InvalidRiskEngine.selector
-        );
+        vm.expectRevert(LiquidationEngine.LiquidationEngine__InvalidRiskEngine.selector);
 
         new LiquidationEngine(address(0));
     }
