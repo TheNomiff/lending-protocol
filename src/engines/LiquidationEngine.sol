@@ -4,6 +4,24 @@ pragma solidity ^0.8.20;
 import {RiskEngine} from "./RiskEngine.sol";
 
 contract LiquidationEngine {
+    ////////////////////
+    ///// STRUCT /////
+    ///////////////////
+
+    struct LiquidationPreview {
+        uint256 maxLiquidation;
+        uint256 effectiveRepay;
+        uint256 bonus;
+        uint256 collateralToSeize;
+        uint256 effectiveSeizure;
+        uint256 remainingDebt;
+        uint256 remainingCollateral;
+        uint256 healthFactorBefore;
+        uint256 healthFactorAfter;
+        uint256 refundAmount;
+        bool canExecute;
+    }
+
     //////////////////
     //// ERRORS ////
     /////////////////
@@ -99,6 +117,45 @@ contract LiquidationEngine {
         }
 
         return collateralBefore - collateralSeized;
+    }
+
+    function previewLiquidation(
+        uint256 collateralAmount,
+        uint256 debtAmount,
+        uint256 repayAmount,
+        uint256 collateralUsd,
+        uint256 debtUsd
+    ) external view returns (LiquidationPreview memory preview) {
+        preview.maxLiquidation = (debtAmount * closeFactor) / LIQUIDATION_PRECISION;
+
+        preview.effectiveRepay = repayAmount > preview.maxLiquidation ? preview.maxLiquidation : repayAmount;
+
+        preview.refundAmount = repayAmount - preview.effectiveRepay;
+
+        preview.bonus = (preview.effectiveRepay * liquidationBonus) / LIQUIDATION_PRECISION;
+
+        preview.collateralToSeize = preview.effectiveRepay + preview.bonus;
+
+        preview.effectiveSeizure =
+            preview.collateralToSeize > collateralAmount ? collateralAmount : preview.collateralToSeize;
+
+        preview.remainingDebt = preview.effectiveRepay >= debtAmount ? 0 : debtAmount - preview.effectiveRepay;
+
+        preview.remainingCollateral =
+            preview.effectiveSeizure >= collateralAmount ? 0 : collateralAmount - preview.effectiveSeizure;
+
+        preview.healthFactorBefore = riskEngine.healthFactor(collateralUsd, debtUsd);
+
+        uint256 remainingCollateralUsd = (collateralUsd * preview.remainingCollateral) / collateralAmount;
+
+        uint256 remainingDebtUsd = (debtUsd * preview.remainingDebt) / debtAmount;
+
+        preview.healthFactorAfter = riskEngine.healthFactor(remainingCollateralUsd, remainingDebtUsd);
+
+        preview.canExecute = preview.effectiveRepay > 0 && preview.healthFactorBefore < riskEngine.minHealthFactor()
+            && preview.healthFactorAfter > preview.healthFactorBefore;
+
+        return preview;
     }
 
     /////////////////////////////
