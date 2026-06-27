@@ -1,8 +1,12 @@
 # PriceOracle — Architecture Blueprint
 
-> **Status:** Phase 1 complete and tested. This document is the long-term development blueprint for `PriceOracle.sol` and its integration with the modular lending protocol.
+> **Status:** ✅ Phase 1 complete and tested. Phases 2–6 ⬜ planned.
 >
-> **Scope:** Current architecture, future phases, security model, upgrade path, multi-asset support, decentralization roadmap, testing strategy, and audit checklist. No implementation code.
+> **Protocol phase:** [LENDING_PROTOCOL.md](./LENDING_PROTOCOL.md) Phase 3 — Oracle (Phase 1 deliverable complete).
+>
+> **Scope:** Current architecture, future phases, security model, upgrade path, multi-asset support, testing strategy, and audit checklist. No implementation code.
+>
+> **Last synchronized:** June 2026 · see [LENDING_PROTOCOL.md §13](./LENDING_PROTOCOL.md#13-document-maintenance).
 
 ---
 
@@ -1445,12 +1449,25 @@ Oracle error or revert at any point → entire chain fails → user operation re
 
 | Document | Content |
 | :--- | :--- |
-| `docs/RISKENGINE.md` | Health factor, caps, pause, solvency framework |
-| `docs/LIQUIDATION_ENGINE.md` | Liquidation policy, multi-asset seizure roadmap |
-| `docs/TIMELOCK.md` | Governance delay mechanics |
-| `docs/LENDINGPROTOCOL.md` | Core lending flows |
-| `README.md` | Protocol overview and roadmap |
+| [LENDING_PROTOCOL.md](./LENDING_PROTOCOL.md) | Master architecture, module status, protocol roadmap |
+| [RISK_ENGINE.md](./RISK_ENGINE.md) | Health factor, caps, pause, solvency framework |
+| [LIQUIDATION_ENGINE.md](./LIQUIDATION_ENGINE.md) | Liquidation policy, multi-asset seizure roadmap |
+| [TIMELOCK.md](./TIMELOCK.md) | Governance delay mechanics |
+| [MULTI_ASSET_LENDING.md](./MULTI_ASSET_LENDING.md) | Multi-asset migration; Phase 5 oracle integration |
+| [README.md](../README.md) | Repository overview |
 
 ---
 
-*Document version: Phase 1 baseline — aligned with `PriceOracle.sol` as implemented and tested.*
+## Appendix E — Document Maintenance
+
+| When | Update |
+| :--- | :--- |
+| Oracle code merged | Phase 1 sections + Appendix C status table |
+| Multi-asset feed added | Phase 2 sections + mark Phase 2 ✅ in Appendix C |
+| Master protocol phase changes | Align Appendix C with [LENDING_PROTOCOL.md §3.4](./LENDING_PROTOCOL.md#34-priceoracle) |
+
+**Authoritative status:** [LENDING_PROTOCOL.md](./LENDING_PROTOCOL.md) is the source of truth for protocol-wide completion; this file owns oracle-module phase detail.
+
+---
+
+*Document version: Phase 1 baseline — aligned with `PriceOracle.sol`. Multi-asset phases 2–6 are blueprint only until implemented.*

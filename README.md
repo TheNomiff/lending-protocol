@@ -11,23 +11,21 @@
 
 > ## Current Status
 
-The protocol is under active development and testing.
+See [`docs/LENDING_PROTOCOL.md`](docs/LENDING_PROTOCOL.md) for the authoritative module status and roadmap.
 
-Implemented:
-- Lending Core
-- Interest Accrual
-- Chainlink Oracle
-- Risk Engine V3
-- Timelock Governance
+**Summary:**
 
-In Progress:
-- Expanded Fuzz Testing
-- Invariant Testing
-- Timelock Integration
-- Security Hardening
+| Module | Status |
+| :--- | :--- |
+| Lending (v1) | ✅ Complete |
+| Interest | ✅ Complete |
+| PriceOracle (Phase 1) | ✅ Complete |
+| RiskEngine V3 | ✅ Complete |
+| Timelock V1 | ✅ Complete · production wiring 🟡 |
+| LiquidationEngine | Phases 1–3 ✅ · Lending integration 🟡 |
+| Multi-Asset | ⬜ Planned |
 
-Not Audited.
-Not Production Ready.
+**Not audited. Not production ready.**
 ---
 
 ## Table of Contents
@@ -81,7 +79,8 @@ flowchart TB
     end
 
     subgraph Risk["Risk Layer"]
-        RE[RiskEngine.sol V3<br/>HF · Caps · Pause · Liquidation Rules]
+        RE[RiskEngine.sol<br/>HF · Caps · Pause]
+        LE[LiquidationEngine.sol<br/>Close Factor · Bonus · Preview]
     end
 
     subgraph Data["Data Layer"]
@@ -96,6 +95,8 @@ flowchart TB
 
     U -->|deposit · borrow · withdraw · repay · liquidate| L
     L -->|validate borrow/withdraw/liquidation| RE
+    L -->|seizure math · preview| LE
+    LE --> RE
     RE -->|read ETH/USD price| PO
     PO --> CL
     O -->|queue parameter updates| TL
@@ -120,6 +121,7 @@ flowchart TB
 | :--- | :--- |
 | `Lending.sol` | User-facing deposit, borrow, withdraw, repay, liquidate; supply/borrow totals; interest accrual |
 | `RiskEngine.sol` | Health factor, borrow/withdraw validation, liquidation eligibility, caps, emergency pause |
+| `LiquidationEngine.sol` | Close factor, liquidation bonus, seizure math, preview |
 | `PriceOracle.sol` | Chainlink integration, staleness checks, pause, feed updates |
 | `Timelock.sol` | Queue, delay, execute, and cancel governance transactions |
 
@@ -142,8 +144,8 @@ flowchart TB
 | **Oracle** | Pause & feed update controls | ✅ |
 | **Risk Engine** | Health factor calculations | ✅ |
 | **Risk Engine** | Borrow & withdraw validation | ✅ |
-| **Risk Engine** | Liquidation eligibility & close factor | ✅ |
-| **Risk Engine** | Liquidation bonus | ✅ |
+| **Risk Engine** | Liquidation eligibility (`isLiquidatable`) | ✅ |
+| **Risk Engine** | Close factor & liquidation bonus | Moved to `LiquidationEngine` |
 | **Risk Engine** | Supply & borrow caps | ✅ |
 | **Risk Engine** | Guardian emergency pause | ✅ |
 | **Risk Engine** | Owner parameter updates | ✅ |
@@ -160,27 +162,29 @@ flowchart TB
 ```
 lending-protocol/
 ├── src/
-│   ├── Lending.sol              # Core lending & liquidation accounting
+│   ├── Lending.sol               # Core lending & liquidation accounting
 │   ├── oracle/
-│   │   └── PriceOracle.sol      # Chainlink price feeds & safety checks
+│   │   └── PriceOracle.sol       # Chainlink price feeds & safety checks
 │   ├── engines/
-│   │   └── RiskEngine.sol       # Risk validation, caps, pause (V3)
+│   │   │── RiskEngine.sol        # Risk validation, caps, pause (V3)
+│   │   └── LiquidationEngine.sol # Liquidation validation, liquidation preview
 │   └── governance/
-│       └── Timelock.sol         # Delayed governance execution
+│       └── Timelock.sol          # Delayed governance execution
 ├── test/
-│   ├── unit/                    # Action-level & RiskEngine tests
-│   ├── fuzz/                    # Bounded input property tests
-│   ├── invariant/               # Stateful protocol invariants
-│   └── utils/                   # Shared test bases & handlers
+│   ├── unit/                     # Action-level & RiskEngine tests
+│   ├── fuzz/                     # Bounded input property tests
+│   ├── invariant/                # Stateful protocol invariants
+│   └── utils/                    # Shared test bases & handlers
 ├── docs/
-│   ├── LENDINGPROTOCOL.md       # Lending design & flows
-│   ├── RISKENGINE.md            # Risk Engine V3 specification
-│   ├── TIMELOCK.md              # Governance timelock design
-│   ├── Phases.txt               # Phase tracking notes
-│   └── coverage.txt             # Coverage run artifacts
-├── lib/                         # forge-std, OpenZeppelin, Chainlink
-├── .github/workflows/test.yml   # CI: fmt, build, test
-└── foundry.toml                 # Remappings & compiler profile
+│   ├── LENDING_PROTOCOL.md       # Master architecture & roadmap
+│   ├── MULTI_ASSET_LENDING.md    # Multi-asset migration blueprint
+│   ├── LIQUIDATION_ENGINE.md     # Liquidation Engine specification
+│   ├── PRICE_ORACLE.md           # Price Oracle specification
+│   ├── RISK_ENGINE.md            # Risk Engine V3 specification
+│   └── TIMELOCK.md               # Governance timelock design
+├── lib/                          # forge-std, OpenZeppelin, Chainlink
+├── .github/workflows/test.yml    # CI: fmt, build, test
+└── foundry.toml                  # Remappings & compiler profile
 ```
 
 ---
@@ -244,22 +248,23 @@ Where values are derived from oracle-priced ETH collateral and outstanding debt 
 
 - **Solvency:** Real-time health factor from collateral, debt, and threshold parameters  
 - **Validation:** `canBorrow`, `canWithdraw`, `isLiquidatable` gates  
-- **Liquidation policy:** Close factor, max liquidatable debt, liquidation bonus bounds  
 - **Protocol limits:** Global `supplyCap` and `borrowCap`  
 - **Emergency response:** Guardian-triggered pause on deposits, borrows, or liquidations  
-- **Administration:** Owner updates to ratios, thresholds, caps, and bonus parameters  
+- **Administration:** Owner updates to ratios, thresholds, and caps  
+
+Close factor and liquidation bonus live in `LiquidationEngine.sol` — see [`docs/LIQUIDATION_ENGINE.md`](docs/LIQUIDATION_ENGINE.md).
 
 ### Default Risk Parameters (Configurable)
 
-| Parameter | Default | Purpose |
-| :--- | ---: | :--- |
-| `maxBorrowRatio` | 50% | Max borrow power vs collateral value |
-| `liquidationThreshold` | 75% | Collateral weighting in HF numerator |
-| `closeFactor` | 50% | Max debt liquidated per transaction |
-| `liquidationBonus` | 10% | Liquidator incentive on seized collateral |
-| `minHealthFactor` | 1e18 | Minimum HF to borrow or withdraw safely |
+| Parameter | Default | Module | Purpose |
+| :--- | ---: | :--- | :--- |
+| `maxBorrowRatio` | 50% | RiskEngine | Max borrow power vs collateral value |
+| `liquidationThreshold` | 75% | RiskEngine | Collateral weighting in HF numerator |
+| `closeFactor` | 50% | LiquidationEngine | Max debt liquidated per transaction |
+| `liquidationBonus` | 10% | LiquidationEngine | Liquidator incentive on seized collateral |
+| `minHealthFactor` | 1e18 | RiskEngine | Minimum HF to borrow or withdraw safely |
 
-See [`docs/RISKENGINE.md`](docs/RISKENGINE.md) for the full V3 specification, formulas, and role matrix.
+See [`docs/RISK_ENGINE.md`](docs/RISK_ENGINE.md) for the full V3 specification, formulas, and role matrix.
 
 ---
 
@@ -335,12 +340,12 @@ Submodules (`forge-std`, OpenZeppelin, Chainlink contracts) are fetched recursiv
 | **Phase 2 — Interest** | Fixed-rate accrual, debt accounting | ✅ |
 | **Phase 2.5 — Testing Foundation** | Unit, fuzz, invariant scaffolding | ✅ |
 | **Phase 3 — Oracle** | Chainlink, stale/invalid checks, pause | ✅ |
-| **Phase 4 — Liquidation** | Health factor, close factor, bonus | ✅ |
+| **Phase 4 — Liquidation** | Health factor, close factor, bonus, modular engine | ✅ Module · 🟡 Lending integration |
 | **Phase 5 — Risk Engine** | Modular risk layer, caps, guardian pause | ✅ |
 | **Current — Hardening** | Expanded fuzz/invariant, integration, audit prep | 🟡 |
-| **Next — Timelock Integration** | Governance-controlled parameter updates | ⬜ |
-| **Next — Liquidation Engine** | Dedicated liquidation module / bots | ⬜ |
-| **Next — Multi-Asset** | Per-market collateral and debt tokens | ⬜ |
+| **Next — Timelock Integration** | Governance-controlled parameter updates | 🟡 |
+| **Next — Liquidation E2E** | Constructor wiring, `lending.liquidate()` tests | 🟡 |
+| **Next — Multi-Asset** | Per [MULTI_ASSET_LENDING.md](docs/MULTI_ASSET_LENDING.md) | ⬜ |
 | **Next — Frontend** | User-facing dApp | ⬜ |
 | **Next — Keeper Bots** | Health monitoring & liquidation automation | ⬜ |
 | **Next — Security Review** | External audit & remediation | ⬜ |
@@ -464,11 +469,12 @@ Production deployment guides and verified contract addresses will be published a
 
 | Document | Contents |
 | :--- | :--- |
-| [`docs/LENDINGPROTOCOL.md`](docs/LENDINGPROTOCOL.md) | Lending flows, interest model, phase history |
-| [`docs/RISKENGINE.md`](docs/RISKENGINE.md) | Risk Engine V3 architecture, parameters, formulas |
-| [`docs/TIMELOCK.md`](docs/TIMELOCK.md) | Governance queue semantics and integration |
-| [`docs/Phases.txt`](docs/Phases.txt) | Internal phase & future module notes |
-| [`docs/coverage.txt`](docs/coverage.txt) | Historical coverage run output |
+| [`docs/LENDING_PROTOCOL.md`](docs/LENDING_PROTOCOL.md) | **Master architecture** — module status, roadmap, checklists |
+| [`docs/RISK_ENGINE.md`](docs/RISK_ENGINE.md) | Risk Engine V3 specification |
+| [`docs/PRICE_ORACLE.md`](docs/PRICE_ORACLE.md) | Price Oracle blueprint (Phase 1 complete) |
+| [`docs/LIQUIDATION_ENGINE.md`](docs/LIQUIDATION_ENGINE.md) | Liquidation Engine blueprint (Phases 1–3 complete) |
+| [`docs/TIMELOCK.md`](docs/TIMELOCK.md) | Governance timelock design |
+| [`docs/MULTI_ASSET_LENDING.md`](docs/MULTI_ASSET_LENDING.md) | Multi-asset migration blueprint |
 
 ---
 

@@ -1,4 +1,14 @@
-# Timelock V1
+# Timelock — Governance Architecture
+
+> **Status:** ✅ V1 complete and tested (contract + unit tests).
+>
+> **Protocol phase:** [LENDING_PROTOCOL.md](./LENDING_PROTOCOL.md) Phase 5 — Governance (Timelock).
+>
+> **Integration:** 🟡 Production ownership transfer to Timelock in progress — test fixtures already transfer Oracle/Risk ownership; mainnet sole-admin path not yet mandatory.
+>
+> **Last synchronized:** June 2026 · see [LENDING_PROTOCOL.md §13](./LENDING_PROTOCOL.md#13-document-maintenance).
+
+---
 
 ## Purpose
 
@@ -310,11 +320,23 @@ Now all updates must pass through Timelock.
 
 ## Future Improvements
 
-V2:
+V2 (see [LENDING_PROTOCOL.md §5 Phase 5+](./LENDING_PROTOCOL.md#phase-5--governance-timelock)):
 
-- Cancel queued transaction
-- Custom delays
-- Role system
+- ~~Cancel queued transaction~~ ✅ V1 includes `cancelTransaction`
+- Custom delays per transaction type
+- Role system (proposer vs executor)
 - Batch execution
-- Governance voting
+- On-chain governance voting
 - Proposal expiration
+
+---
+
+## Document Maintenance
+
+| When | Update |
+| :--- | :--- |
+| Timelock code changes | Contract flow and integration sections |
+| Production ownership transferred | Mark integration ✅ in header and [LENDING_PROTOCOL.md §3.6](./LENDING_PROTOCOL.md#36-timelock) |
+| New admin modules added | Extend ownership integration list (Oracle, Risk, LiquidationEngine, AssetRegistry future) |
+
+**Authoritative status:** [LENDING_PROTOCOL.md](./LENDING_PROTOCOL.md) · **Related:** [RISK_ENGINE.md](./RISK_ENGINE.md) · [PRICE_ORACLE.md](./PRICE_ORACLE.md) · [LIQUIDATION_ENGINE.md](./LIQUIDATION_ENGINE.md)

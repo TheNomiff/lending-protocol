@@ -1,8 +1,12 @@
 # LiquidationEngine — Architecture Blueprint
 
-> **Status:** Phase 1 complete and tested. This document is the long-term development blueprint for `LiquidationEngine.sol` and its integration with the modular lending protocol.
+> **Status:** Phases 1–3 ✅ complete and tested · Phases 4–6 ⏳ planned · **Lending integration 🟡 in progress**
+>
+> **Protocol phase:** [LENDING_PROTOCOL.md](./LENDING_PROTOCOL.md) Phase 6 — Liquidation Engine.
 >
 > **Scope:** Architecture, formulas, flows, roadmap, security analysis, and future vision. No implementation code.
+>
+> **Last synchronized:** June 2026 · see [LENDING_PROTOCOL.md §13](./LENDING_PROTOCOL.md#13-document-maintenance).
 
 ---
 
@@ -349,6 +353,8 @@ Position after:
 
 ## 4. Phase 2 (Validation Layer)
 
+> **Implementation status:** ✅ Complete — `canLiquidate`, `remainingDebtAfterLiquidation`, and `remainingCollateralAfterSeizure` are implemented in `LiquidationEngine.sol`. Health-factor improvement check remains in `Lending.sol` (composite `validateLiquidation` deferred).
+
 ### Objective
 
 Move liquidation **validation logic** from `Lending.sol` into `LiquidationEngine`, so `Lending` only executes state updates after the engine approves the liquidation math.
@@ -456,6 +462,8 @@ liquidate():
 ---
 
 ## 5. Phase 3 (Preview System)
+
+> **Implementation status:** ✅ Complete — `previewLiquidation` and `LiquidationPreview` struct implemented; unit tests in `test/unit/liquidation/LiquidationEnginepreviewLiquidation.t.sol`. Not yet consumed by `Lending.liquidate()`.
 
 ### Objective
 
@@ -974,25 +982,25 @@ every block / price update:
 | **Fuzz** | (Recommended) `debt`, `closeFactor` → `maxLiquidation <= debt` |
 | **Invariant** | (Recommended) `seizedCollateral >= repayAmount` for all valid inputs |
 
-### Phase 2 (Validation Layer)
+### Phase 2 (Validation Layer) — ✅ Unit tests complete
 
-| Type | Examples |
-| :--- | :--- |
-| **Unit** | `isHealthFactorImproved(0.8e18, 0.9e18)` true; equal HF false |
-| **Unit** | `remainingDebtAfterLiquidation(100, 30) == 70`; repay > debt reverts |
-| **Unit** | `canLiquidate` aligned with `RiskEngine.isLiquidatable` |
-| **Integration** | Full `liquidate()` through Lending with engine validation only |
-| **Fuzz** | Random HF, repay → validation matches brute-force simulation |
-| **Invariant** | Successful liquidation always implies `HF_after > HF_before` |
+| Type | Status | Examples |
+| :--- | :--- | :--- |
+| **Unit** | ✅ | `canLiquidate` aligned with `RiskEngine.isLiquidatable` |
+| **Unit** | ✅ | `remainingDebtAfterLiquidation`; `remainingCollateralAfterSeizure` |
+| **Unit** | ⬜ | `isHealthFactorImproved` (not implemented; check remains in Lending) |
+| **Integration** | ⬜ | Full `liquidate()` through Lending with engine validation only |
+| **Fuzz** | 🟡 | Recommended |
+| **Invariant** | ⬜ | Successful liquidation implies `HF_after > HF_before` at integration level |
 
-### Phase 3 (Preview System)
+### Phase 3 (Preview System) — ✅ Unit tests complete
 
-| Type | Examples |
-| :--- | :--- |
-| **Unit** | Preview outputs match individual calculation functions |
-| **Integration** | `previewLiquidation` == execution result for same block state |
-| **Fuzz** | `canExecute` in preview matches actual `liquidate` success/revert |
-| **Invariant** | `repayAmount <= maxLiquidation` always in preview |
+| Type | Status | Examples |
+| :--- | :--- | :--- |
+| **Unit** | ✅ | `LiquidationEnginepreviewLiquidation.t.sol` — preview outputs vs calculations |
+| **Integration** | ⬜ | `previewLiquidation` == execution result (Lending not wired) |
+| **Fuzz** | 🟡 | Recommended |
+| **Invariant** | ✅ | `repayAmount <= maxLiquidation` in preview (unit level) |
 
 ### Phase 4 (Multi-Asset)
 
@@ -1215,11 +1223,20 @@ Default `liquidationThreshold = 75%` means collateral is haircutted before HF co
 | Phase | Status | Deliverable |
 | :--- | :--- | :--- |
 | **1** | ✅ Complete | Calculation functions, static parameters, unit tests |
-| **2** | Planned | Validation layer (`canLiquidate`, HF improvement, remaining balances) |
-| **3** | Planned | `previewLiquidation` for UX and bots |
-| **4** | Planned | Multi-asset oracle-based seizure |
-| **5** | Planned | Dynamic bonus and close factor curves |
-| **6** | Planned | Optimal partial liquidation, batch, keeper integration |
+| **2** | ✅ Complete | Validation helpers (`canLiquidate`, `remainingDebt`, `remainingCollateral`) |
+| **3** | ✅ Complete | `previewLiquidation` for UX and bots |
+| **4** | ⏳ Planned | Multi-asset oracle-based seizure — [MULTI_ASSET_LENDING.md](./MULTI_ASSET_LENDING.md) Phase 7 |
+| **5** | ⏳ Planned | Dynamic bonus and close factor curves |
+| **6** | ⏳ Planned | Optimal partial liquidation, batch, keeper integration |
+
+**Integration gaps (Phase 6 protocol milestone):**
+
+| Item | Status |
+| :--- | :---: |
+| `LiquidationEngine` in `Lending` constructor | ⬜ |
+| End-to-end `Lending.liquidate()` tests | ⬜ |
+| `previewLiquidation` used by `Lending` | ⬜ |
+| `totalSupply` decrement on seizure | ⬜ |
 
 ---
 
@@ -1227,11 +1244,25 @@ Default `liquidationThreshold = 75%` means collateral is haircutted before HF co
 
 | Document | Content |
 | :--- | :--- |
-| `docs/RISKENGINE.md` | Health factor, caps, pause, solvency framework |
-| `docs/TIMELOCK.md` | Governance delay mechanics |
-| `docs/LENDINGPROTOCOL.md` | Core lending flows |
-| `README.md` | Protocol overview and roadmap |
+| [LENDING_PROTOCOL.md](./LENDING_PROTOCOL.md) | Master architecture, module status, Phase 6 roadmap |
+| [RISK_ENGINE.md](./RISK_ENGINE.md) | Health factor, caps, pause, `isLiquidatable` |
+| [TIMELOCK.md](./TIMELOCK.md) | Governance delay for close factor / bonus updates |
+| [MULTI_ASSET_LENDING.md](./MULTI_ASSET_LENDING.md) | Cross-asset liquidation (Phase 7 blueprint) |
+| [PRICE_ORACLE.md](./PRICE_ORACLE.md) | Oracle pricing for multi-asset seizure |
+| [README.md](../README.md) | Repository overview |
 
 ---
 
-*Document version: Phase 1 baseline — aligned with `LiquidationEngine.sol` as implemented and tested.*
+## Appendix D — Document Maintenance
+
+| When | Update |
+| :--- | :--- |
+| New LiquidationEngine functions | Relevant phase section + Appendix B |
+| Lending integration merged | Clear integration gaps table in Appendix B |
+| Master Phase 6 status changes | Status header + [LENDING_PROTOCOL.md §3.7](./LENDING_PROTOCOL.md#37-liquidationengine) |
+
+**Authoritative status:** [LENDING_PROTOCOL.md](./LENDING_PROTOCOL.md) for protocol-wide state; this file for module phase detail.
+
+---
+
+*Document version: Phases 1–3 aligned with `LiquidationEngine.sol`. Phases 4–6 and full Lending integration are roadmap items.*

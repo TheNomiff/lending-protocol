@@ -1,10 +1,22 @@
-# RiskEngine V3
+# RiskEngine — Architecture Specification
+
+> **Status:** ✅ V3 complete and tested.
+>
+> **Protocol phase:** [LENDING_PROTOCOL.md](./LENDING_PROTOCOL.md) Phase 4 — Risk Engine.
+>
+> **Scope:** Current V3 implementation (single-asset ETH). Per-asset portfolio risk is planned in [MULTI_ASSET_LENDING.md](./MULTI_ASSET_LENDING.md) Phase 6.
+>
+> **Last synchronized:** June 2026 · see [Document Maintenance](./RISK_ENGINE.md#11-document-maintenance) in this file and [LENDING_PROTOCOL.md §13](./LENDING_PROTOCOL.md#13-document-maintenance).
+
+---
 
 ## 1. Executive Summary
 
 `RiskEngine.sol` serves as the primary risk management and validation layer for the protocol. It is isolated from core accounting logic to enforce collateral safety, liquidation thresholds, protocol caps, and emergency controls.
 
-By decoupling risk calculations from core executionV, `Lending.sol` remains strictly focused on user asset accounting (deposits, withdrawals, borrowing, and repayments), while the `RiskEngine` independently governs protocol solvency and system limits.
+By decoupling risk calculations from core execution, `Lending.sol` remains strictly focused on user asset accounting (deposits, withdrawals, borrowing, and repayments), while the `RiskEngine` independently governs protocol solvency and system limits.
+
+> **Liquidation parameters:** `closeFactor` and `liquidationBonus` were moved to `LiquidationEngine.sol`. See [LIQUIDATION_ENGINE.md](./LIQUIDATION_ENGINE.md).
 
 ---
 
@@ -26,6 +38,7 @@ PriceOracle.sol (Asset Valuation)
 | **Lending** | Executes user interactions, state updates, and ledger accounting. |
 | **RiskEngine** | Validates state transitions against risk parameters and caps. |
 | **PriceOracle** | Provides real-time asset pricing and exchange rates. |
+| **LiquidationEngine** | Close factor, liquidation bonus, seizure math, preview (not in RiskEngine). |
 | **Timelock** | Enforces governance-mandated execution delays on critical functions. |
 
 ---
@@ -36,7 +49,7 @@ The `RiskEngine` autonomously evaluates and enforces the following protocol inva
 
 * **Solvency Calculations**: Computes real-time account health factors.
 * **Transaction Validation**: Authorises or reverts borrow and withdrawal requests.
-* **Liquidation Enforcement**: Evaluates liquidation eligibility, caps, and liquidator bonuses.
+* **Liquidation Eligibility**: Evaluates whether health factor permits liquidation (`isLiquidatable`). Close factor and bonus live in `LiquidationEngine`.
 * **Supply & Borrow Constraints**: Restricts global TVL and debt exposure via protocol-wide caps.
 * **Emergency Management**: Provides hooks for instant circuit-breaking by designated Guardians.
 
@@ -47,13 +60,13 @@ The `RiskEngine` autonomously evaluates and enforces the following protocol inva
 
 | Parameter | Type | Purpose |
 | :--- | :--- | :--- |
-| `maxBorrowRatio` | Percentage | Maximum borrowing capacity against deposited collateral. |
-| `liquidationThreshold` | Percentage | The collateral-to-debt ratio at which a position becomes undercollateralised. |
-| `closeFactor` | Percentage | The maximum percentage of debt that can be liquidated in a single transaction. |
-| `liquidationBonus` | Percentage | The discount offered to liquidators when purchasing seized collateral. |
-| `minHealthFactor` | Scaled Uint | The absolute minimum health factor required to maintain a position (1.0 × SCALE). |
-| `supplyCap` | Asset Amount | The global ceiling for aggregated asset deposits. |
-| `borrowCap` | Asset Amount | The global ceiling for aggregated asset borrowing. |
+| `maxBorrowRatio` | Percentage | Maximum borrowing capacity against deposited collateral (default 50%). |
+| `liquidationThreshold` | Percentage | Collateral haircut weight in health factor numerator (default 75%). |
+| `minHealthFactor` | Scaled Uint | Minimum HF to borrow/withdraw safely; below this = liquidatable (default 1e18). |
+| `supplyCap` | Asset Amount | Global ceiling for aggregated ETH deposits. |
+| `borrowCap` | Asset Amount | Global ceiling for aggregated ETH debt. |
+
+**Not in RiskEngine (see [LIQUIDATION_ENGINE.md](./LIQUIDATION_ENGINE.md)):** `closeFactor`, `liquidationBonus`.
 
 ---
 
@@ -100,17 +113,25 @@ healthFactor = (collateralAdjusted * PRECISION) / debtUsd;
 
 ---
 
-## 7. Liquidation Engine
+## 7. Liquidation Integration
 
-Liquidation is programmatically activated when an account's health factor drops below `minHealthFactor` (1.0). 
+Liquidation is programmatically activated when an account's health factor drops below `minHealthFactor` (1.0). **RiskEngine** exposes `isLiquidatable(healthFactor)`. **LiquidationEngine** owns close factor, bonus, and seizure math.
 
-### 7.1 Debt Repayment Cap (Close Factor)
-The maximum debt volume clearable per transaction is bounded by the `closeFactor`:
+### 7.1 Eligibility (RiskEngine)
+
+```text
+isLiquidatable(HF) = HF < minHealthFactor
+```
+
+### 7.2 Execution Policy (LiquidationEngine)
+
+See [LIQUIDATION_ENGINE.md](./LIQUIDATION_ENGINE.md):
+
 $$\text{Max Repayment} = \frac{\text{Debt} \times \text{closeFactor}}{100}$$
 
-### 7.2 Liquidator Reward Calculation
-To incentivise external capital, liquidators receive a premium on seized collateral:
-$$\text{Seized Collateral Value} = \text{repayAmount} \times \left(1 + \frac{\text{liquidationBonus}}{100}\right)$$
+$$\text{Seized Collateral} = \text{repayAmount} \times \left(1 + \frac{\text{liquidationBonus}}{100}\right)$$
+
+**Integration status:** Module phases 1–3 complete; `Lending` constructor wiring and E2E tests in progress — [LENDING_PROTOCOL.md §3.7](./LENDING_PROTOCOL.md#37-liquidationengine).
 
 ---
 
@@ -165,7 +186,28 @@ The engine emits explicit logs to support off-chain monitoring, indexing engines
 
 ## 10. Future Upgrade Roadmap (V4+)
 
-* **Multi-Collateral Engine**: Cross-margin and isolated-margin risk management engines.
-* **Dynamic Interest Rates**: Utilization-driven APR pricing loops.
-* **Liquidation Auctions**: Replacing fixed bonuses with competitive premium bidding.
-* **Keeper Network Integration**: Automated bots for zero-delay liquidation enforcement.
+Aligned with [LENDING_PROTOCOL.md §5](./LENDING_PROTOCOL.md#5-detailed-development-roadmap) and [MULTI_ASSET_LENDING.md](./MULTI_ASSET_LENDING.md):
+
+| Upgrade | Master Phase | Blueprint |
+| :--- | :--- | :--- |
+| Per-asset LTV / threshold / caps | Phase 7+ | MULTI_ASSET_LENDING Phase 6 |
+| Portfolio health aggregation | Phase 7+ | MULTI_ASSET_LENDING Phase 6 |
+| Isolation Mode | Phase 11 | MULTI_ASSET_LENDING §5.11 |
+| E-Mode | Phase 12 | MULTI_ASSET_LENDING §5.12 |
+| Dynamic interest rates | Phase 10 | MULTI_ASSET_LENDING Phase 8 |
+| Liquidation auctions / dynamic bonus | Phase 8+ | LIQUIDATION_ENGINE Phase 5+ |
+
+---
+
+## 11. Document Maintenance
+
+This specification must stay aligned with [LENDING_PROTOCOL.md](./LENDING_PROTOCOL.md) — the master architecture document.
+
+| When | Update |
+| :--- | :--- |
+| RiskEngine code changes | Sections 4–9 and parameter tables |
+| Liquidation params change | Section 7 + [LIQUIDATION_ENGINE.md](./LIQUIDATION_ENGINE.md) (not this file) |
+| Multi-asset risk ships | Add V4 section or link to MULTI_ASSET_LENDING Phase 6 |
+| Phase 4 marked complete/in progress | Status header at top of this file |
+
+**Status legend:** ✅ complete · 🟡 in progress · ⬜ planned — consistent across all `docs/` files.
