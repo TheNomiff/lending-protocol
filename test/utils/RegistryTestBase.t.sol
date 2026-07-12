@@ -86,7 +86,7 @@ abstract contract RegistryTestBase is Test {
         registry.transferGuardian(newGuardian);
     }
 
-    function _setTimelock(address newTimelock) internal {
-        registry.setTimelock(newTimelock);
+    function _transferTimelock(address newTimelock) internal {
+        registry.transferTimelock(newTimelock);
     }
 }

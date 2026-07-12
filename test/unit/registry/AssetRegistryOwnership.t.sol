@@ -54,7 +54,7 @@ contract AssetRegistryOwnerTest is RegistryTestBase {
     function testOnlyPendingOwnerCanAcceptOwnership() public {
         _transferOwnership(pendingOwner);
 
-        vm.expectRevert(AssetRegistry.AssetRegistry__NotOwner.selector);
+        vm.expectRevert(AssetRegistry.AssetRegistry__NotPendingOwner.selector);
 
         _acceptOwnership(attacker);
     }
@@ -107,7 +107,7 @@ contract AssetRegistryOwnerTest is RegistryTestBase {
     function testSetTimelock() public {
         address newTimelock = makeAddr("timelock");
 
-        _setTimelock(newTimelock);
+        _transferTimelock(newTimelock);
 
         assertEq(registry.timelock(), newTimelock);
     }
@@ -117,7 +117,7 @@ contract AssetRegistryOwnerTest is RegistryTestBase {
 
         vm.expectRevert(AssetRegistry.AssetRegistry__InvalidTimelock.selector);
 
-        _setTimelock(newTimelock);
+        _transferTimelock(newTimelock);
     }
 
     function testOnlyOwnerCanSetTimelock() public {
@@ -126,7 +126,7 @@ contract AssetRegistryOwnerTest is RegistryTestBase {
         vm.expectRevert(AssetRegistry.AssetRegistry__NotOwner.selector);
         vm.prank(attacker);
 
-        _setTimelock(newTimelock);
+        _transferTimelock(newTimelock);
     }
 
     function testSetTimelockEmitsEvent() public {
@@ -137,6 +137,6 @@ contract AssetRegistryOwnerTest is RegistryTestBase {
 
         emit AssetRegistry.TimelockUpdated(oldTimelock, newTimelock);
 
-        _setTimelock(newTimelock);
+        _transferTimelock(newTimelock);
     }
 }

@@ -7,6 +7,7 @@ contract AssetRegistry {
     /////////////////
 
     error AssetRegistry__NotOwner();
+    error AssetRegistry__NotPendingOwner();
     error AssetRegistry__NotTimelock();
     error AssetRegistry__NotGuardian();
 
@@ -251,7 +252,7 @@ contract AssetRegistry {
     }
 
     function acceptOwnership() external {
-        if (msg.sender != pendingOwner) revert AssetRegistry__NotOwner();
+        if (msg.sender != pendingOwner) revert AssetRegistry__NotPendingOwner();
 
         owner = pendingOwner;
         pendingOwner = address(0);
@@ -266,7 +267,7 @@ contract AssetRegistry {
         emit GuardianUpdated(oldGuardian, newGuardian);
     }
 
-    function setTimelock(address newTimelock) external onlyOwner {
+    function transferTimelock(address newTimelock) external onlyOwner {
         if (newTimelock == address(0)) {
             revert AssetRegistry__InvalidTimelock();
         }

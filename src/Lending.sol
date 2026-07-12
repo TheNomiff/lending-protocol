@@ -5,6 +5,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {PriceOracle} from "./oracle/PriceOracle.sol";
 import {RiskEngine} from "./engines/RiskEngine.sol";
 import {LiquidationEngine} from "./engines/LiquidationEngine.sol";
+import {AssetRegistry} from "./registry/AssetRegistry.sol";
 
 contract Lending is ReentrancyGuard {
     ////////////////////
@@ -40,6 +41,9 @@ contract Lending is ReentrancyGuard {
     error Lending__BorrowPaused();
     error Lending__DepositPaused();
     error Lending__LiquidationPaused();
+    error Lending__InvalidAssetRegistry();
+    error Lending__AssetNotRegistered();
+    error Lending__AssetDisabled();
 
     ////////////////////
     ///// EVENTS /////
@@ -75,6 +79,7 @@ contract Lending is ReentrancyGuard {
     PriceOracle public oracle;
     RiskEngine public riskEngine;
     LiquidationEngine public liquidationEngine;
+    AssetRegistry public assetRegistry;
 
     //////////////////////
     ///// MAPPINGS /////
@@ -102,6 +107,7 @@ contract Lending is ReentrancyGuard {
         if (riskEngineAddress == address(0)) {
             revert Lending__InvalidRiskEngine();
         }
+
         riskEngine = RiskEngine(riskEngineAddress);
 
         owner = msg.sender;
@@ -340,6 +346,16 @@ contract Lending is ReentrancyGuard {
 
     function _calculateMaxLiquidation(uint256 debt) internal view returns (uint256) {
         return liquidationEngine.calculateMaxLiquidation(debt);
+    }
+
+    function _validateAsset(address asset) internal view {
+        if (!assetRegistry.isRegistered(asset)) {
+            revert Lending__AssetNotRegistered();
+        }
+
+        (,, bool enabled) = assetRegistry.assets(asset);
+
+        if (!enabled) revert Lending__AssetDisabled();
     }
 
     ////////////////////////////////
