@@ -11,9 +11,14 @@ contract LendingFuzzTest is LendingTestBase {
         _fundUser(USER, amount);
         _depositAs(USER, amount);
 
-        (uint256 depositedAmount,,) = _userPosition(USER);
+        (uint256 depositedAmount,,) = _userPosition(USER, ETH_SENTINEL);
+
+        (,, uint256 totalLiquidity,,) = lending.reserves(ETH_SENTINEL);
+
+        assertEq(totalLiquidity, amount);
+
         assertEq(depositedAmount, amount);
-        assertEq(lending.totalLiquidity(), amount);
+        assertEq(totalLiquidity, amount);
     }
 
     function testFuzz_BorrowWithinLimitSucceeds(uint96 depositAmount, uint96 borrowAmount) public {
@@ -24,9 +29,12 @@ contract LendingFuzzTest is LendingTestBase {
         _depositAs(USER, deposit);
         _borrowAs(USER, borrow);
 
-        (, uint256 borrowedAmount,) = _userPosition(USER);
+        (, uint256 borrowedAmount,) = _userPosition(USER, ETH_SENTINEL);
+
+        (,, uint256 totalLiquidity,,) = lending.reserves(ETH_SENTINEL);
+
         assertEq(borrowedAmount, borrow);
-        assertEq(lending.totalLiquidity(), deposit - borrow);
+        assertEq(totalLiquidity, deposit - borrow);
     }
 
     function testFuzz_RepayNeverLeavesNegativeDebt(uint96 depositAmount, uint96 borrowAmount, uint96 repayAmount)
@@ -41,7 +49,7 @@ contract LendingFuzzTest is LendingTestBase {
         _borrowAs(USER, borrow);
         _repayAs(USER, repay);
 
-        (, uint256 borrowedAmount,) = _userPosition(USER);
+        (, uint256 borrowedAmount,) = _userPosition(USER, ETH_SENTINEL);
         assertLe(borrowedAmount, borrow);
     }
 }

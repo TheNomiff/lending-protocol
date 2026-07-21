@@ -9,7 +9,7 @@ contract RepayTest is LendingTestBase {
         _openPosition(USER, 10 ether, 4 ether);
         _repayAs(USER, 2 ether);
 
-        (uint256 depositedAmount, uint256 borrowedAmount,) = _userPosition(USER);
+        (uint256 depositedAmount, uint256 borrowedAmount,) = _userPosition(USER, ETH_SENTINEL);
         assertEq(depositedAmount, 10 ether);
         assertEq(borrowedAmount, 2 ether);
     }
@@ -18,7 +18,7 @@ contract RepayTest is LendingTestBase {
         _openPosition(USER, 10 ether, 4 ether);
         _repayAs(USER, 10 ether);
 
-        (, uint256 borrowedAmount,) = _userPosition(USER);
+        (, uint256 borrowedAmount,) = _userPosition(USER, ETH_SENTINEL);
         assertEq(borrowedAmount, 0);
     }
 
@@ -26,7 +26,7 @@ contract RepayTest is LendingTestBase {
         _openPosition(USER, 10 ether, 4 ether);
         _repayAs(USER, 4 ether);
 
-        (, uint256 borrowedAmount,) = _userPosition(USER);
+        (, uint256 borrowedAmount,) = _userPosition(USER, ETH_SENTINEL);
         assertEq(borrowedAmount, 0);
     }
 
@@ -35,12 +35,12 @@ contract RepayTest is LendingTestBase {
 
         vm.prank(USER);
         vm.expectRevert(Lending.Lending__NotAnyBorrow.selector);
-        lending.repay{value: 1 ether}();
+        lending.repay{value: 1 ether}(ETH_SENTINEL);
     }
 
     function testRepayRevertsIfAmountZero() public {
         vm.prank(USER);
         vm.expectRevert(Lending.Lending__AmountZero.selector);
-        lending.repay{value: 0}();
+        lending.repay{value: 0}(ETH_SENTINEL);
     }
 }

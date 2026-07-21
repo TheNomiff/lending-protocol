@@ -10,11 +10,13 @@ contract BorrowTest is LendingTestBase {
         uint256 amountBorrow = 5 ether;
 
         _openPosition(USER, amountDeposit, amountBorrow);
-        (uint256 depositedAmount, uint256 borrowedAmount,) = _userPosition(USER);
+        (uint256 depositedAmount, uint256 borrowedAmount,) = _userPosition(USER, ETH_SENTINEL);
+
+        (,, uint256 totalLiquidity,,) = lending.reserves(ETH_SENTINEL);
 
         assertEq(borrowedAmount, amountBorrow);
         assertEq(depositedAmount, amountDeposit);
-        assertEq(lending.totalLiquidity(), amountDeposit - amountBorrow);
+        assertEq(totalLiquidity, amountDeposit - amountBorrow);
     }
 
     function testBorrowRevertsIfCollateralBreaks() public {
@@ -22,7 +24,7 @@ contract BorrowTest is LendingTestBase {
 
         vm.prank(USER);
         vm.expectRevert(Lending.Lending__BorrowExceedsCollateral.selector);
-        lending.borrow(10 ether);
+        lending.borrow(10 ether, ETH_SENTINEL);
     }
 
     function testBorrowRevertsIfNotEnoughLiquidity() public {
@@ -30,12 +32,12 @@ contract BorrowTest is LendingTestBase {
 
         vm.prank(USER);
         vm.expectRevert(Lending.Lending__BorrowExceedsCollateral.selector);
-        lending.borrow(2 ether);
+        lending.borrow(2 ether, ETH_SENTINEL);
     }
 
     function testBorrowRevertsIfAmountZero() public {
         vm.prank(USER);
         vm.expectRevert(Lending.Lending__AmountZero.selector);
-        lending.borrow(0);
+        lending.borrow(0, ETH_SENTINEL);
     }
 }

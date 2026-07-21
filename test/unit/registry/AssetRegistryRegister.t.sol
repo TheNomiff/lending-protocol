@@ -31,11 +31,12 @@ contract AssetRegistryRegisterTest is RegistryTestBase {
         _registerWeth();
     }
 
-    function testRegisterRevertsIfZeroAddress() public {
-        vm.expectRevert(AssetRegistry.AssetRegistry__InvalidAsset.selector);
+    function testRegisterEthSentinel() public {
         vm.prank(timelock);
 
-        registry.registerAsset(address(0), AssetRegistry.AssetType.CollateralOnly, 18);
+        registry.registerAsset(address(0), AssetRegistry.AssetType.CollateralAndBorrowable, 18);
+
+        assertTrue(registry.isRegistered(address(0)));
     }
 
     function testRegisterRevertsIfInvalidDecimals() public {

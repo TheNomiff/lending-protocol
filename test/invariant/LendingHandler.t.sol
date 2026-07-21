@@ -8,6 +8,7 @@ contract LendingHandler is Test {
     Lending internal immutable lending;
 
     address[] internal actors;
+    address internal constant ETH_SENTINEL = address(0);
 
     constructor(Lending _lending) {
         lending = _lending;
@@ -28,40 +29,36 @@ contract LendingHandler is Test {
         vm.deal(actor, boundedAmount);
 
         vm.prank(actor);
-        lending.deposit{value: boundedAmount}();
+        lending.deposit{value: boundedAmount}(ETH_SENTINEL);
     }
 
     function borrow(uint256 actorIndex, uint256 amount) external {
         address actor = _actor(actorIndex);
         uint256 boundedAmount = bound(amount, 1 wei, 10 ether);
-        // #region agent log
-        _writeDebugLog("pre-fix", "H3", "LendingHandler.t.sol:borrow", "borrow bounded", actor, amount, boundedAmount);
-        // #endregion
+
         vm.prank(actor);
-        try lending.borrow(boundedAmount) {} catch {}
+
+        try lending.borrow(boundedAmount, ETH_SENTINEL) {} catch {}
     }
 
     function withdraw(uint256 actorIndex, uint256 amount) external {
         address actor = _actor(actorIndex);
         uint256 boundedAmount = bound(amount, 1 wei, 10 ether);
-        // #region agent log
-        _writeDebugLog(
-            "pre-fix", "H4", "LendingHandler.t.sol:withdraw", "withdraw bounded", actor, amount, boundedAmount
-        );
-        // #endregion
+
         vm.prank(actor);
-        try lending.withdraw(boundedAmount) {} catch {}
+
+        try lending.withdraw(boundedAmount, ETH_SENTINEL) {} catch {}
     }
 
     function repay(uint256 actorIndex, uint256 amount) external {
         address actor = _actor(actorIndex);
         uint256 boundedAmount = bound(amount, 1 wei, 10 ether);
-        // #region agent log
-        _writeDebugLog("pre-fix", "H5", "LendingHandler.t.sol:repay", "repay bounded", actor, amount, boundedAmount);
-        // #endregion
+
         vm.deal(actor, boundedAmount);
+
         vm.prank(actor);
-        try lending.repay{value: boundedAmount}() {} catch {}
+
+        try lending.repay{value: boundedAmount}(ETH_SENTINEL) {} catch {}
     }
 
     function _actor(uint256 actorIndex) internal view returns (address) {

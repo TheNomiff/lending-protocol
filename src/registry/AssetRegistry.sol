@@ -140,7 +140,9 @@ contract AssetRegistry {
     ////////////////////////////
 
     function registerAsset(address asset, AssetType assetType, uint8 decimals) external whenNotPaused onlyTimelock {
-        if (asset == address(0)) revert AssetRegistry__InvalidAsset();
+        if (asset == address(0) && decimals != 18) {
+            revert AssetRegistry__InvalidDecimals();
+        }
 
         if (assetType == AssetType.None) {
             revert AssetRegistry__InvalidAssetType();
