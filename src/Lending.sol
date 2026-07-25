@@ -305,6 +305,7 @@ contract Lending is ReentrancyGuard {
         }
 
         emit Repaid(msg.sender, asset, repayAmount);
+        emit UserPositionUpdated(msg.sender, asset, user.deposited, user.borrowed);
     }
 
     function liquidate(address userAddress, address debtAsset)
@@ -373,6 +374,8 @@ contract Lending is ReentrancyGuard {
         if (!sent) revert Lending__LiquidationBonusFailed();
 
         emit Liquidated(userAddress, userAddress, repayAmount, collateralToSeize);
+
+        emit UserPositionUpdated(userAddress, debtAsset, user.deposited, user.borrowed);
     }
 
     ////////////////////////////////
@@ -535,5 +538,13 @@ contract Lending is ReentrancyGuard {
 
     function getUserDeposit(address user, address asset) external view returns (uint256) {
         return userPositions[user][asset].deposited;
+    }
+
+    function getUserCollateralAssets(address user) public view returns (address[] memory) {
+        return _userCollateralAssets[user];
+    }
+
+    function getUserDebtAssets(address user) public view returns (address[] memory) {
+        return _userDebtAssets[user];
     }
 }
